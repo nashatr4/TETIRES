@@ -56,7 +56,7 @@ fun Beranda(navController: NavController) {
         Spacer(modifier = Modifier.height(16.dp))
         HeroBanner(navController = navController)
         Spacer(modifier = Modifier.height(16.dp))
-//        HistorySection(listHistoryPengecekan = listHistoryPengecekan)
+        HistorySection(listHistoryPengecekan = listHistoryPengecekan)
     }
 }
 
@@ -86,15 +86,18 @@ fun TopAppBar() {
 
 @Composable
 fun HeroBanner (navController: NavController) {
-    Card(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF4A90E2))
+            .height(140.dp)
+            .padding(horizontal = 16.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color(0xFF4A90E2))
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Image(
@@ -108,17 +111,113 @@ fun HeroBanner (navController: NavController) {
                     text = "Ayo lakukan pengecekan ban busmu!",
                     color = Color.White,
                     fontSize = 18.sp,
+                    lineHeight = 20.sp,
                     fontWeight = FontWeight.Bold
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(12.dp))
                 Button(
                     onClick = { navController.navigate("list_bus") },
                     shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3949A3))
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3949A3)),
+                    modifier = Modifier.height(32.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp)
                 ) {
                     Text(text = "Lihat Bus", color = Color.White)
                 }
             }
         }
     }
+}
+
+@Composable
+fun HistorySection(listHistoryPengecekan: List<PengecekanHistory>) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .clip(RoundedCornerShape(topStart = 15.dp, topEnd = 15.dp))
+            .background(Color(0xFFAFD3E2))
+            .padding(24.dp)
+    ) {
+        // SearchBar
+        OutlinedTextField(
+            value = "",
+            onValueChange = { },
+            modifier = Modifier
+                .height(48.dp)
+                .fillMaxWidth(),
+            placeholder = { Text("Cari berdasarkan plat nomor")},
+            leadingIcon = {
+                Icon(
+                    painter = painterResource(id=R.drawable.filtericon),
+                    contentDescription = "Filter Icon",
+                    modifier = Modifier.size(20.dp)
+                )
+            },
+            trailingIcon = {
+                Icon(Icons.Default.Search,
+                    contentDescription = "Search Icon",
+                    modifier = Modifier.size(20.dp))
+            },
+            shape = RoundedCornerShape(50)
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+
+        //History Table
+        HistoryTable(listHistoryPengecekan = listHistoryPengecekan)
+    }
+}
+
+@Composable
+fun HistoryTable(listHistoryPengecekan: List<PengecekanHistory>) {
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color(0xFF3949A3), shape = RoundedCornerShape(8.dp))
+                .padding(vertical = 8.dp, horizontal = 8.dp)
+        ) {
+            Text("Tanggal", modifier = Modifier.weight(1f), color = Color.White, textAlign = TextAlign.Center)
+            Text("Perusahaan Bus", modifier = Modifier.weight(1.5f), color = Color.White, textAlign = TextAlign.Center)
+            Text("Plat Nomor", modifier = Modifier.weight(1.5f), color = Color.White, textAlign = TextAlign.Center)
+            Text("Status", modifier = Modifier.weight(1f), color = Color.White, textAlign = TextAlign.Center)
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Body (Scrollable)
+        LazyColumn {
+            items(listHistoryPengecekan) {
+                history -> HistoryRow(history = history)
+                Spacer(modifier = Modifier.height(4.dp))
+            }
+        }
+    }
+}
+
+@Composable
+fun HistoryRow(history: PengecekanHistory) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.Transparent, shape = RoundedCornerShape(8.dp))
+            .padding(vertical = 12.dp, horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(history.tanggal, modifier = Modifier.weight(1f), fontSize = 12.sp, textAlign = TextAlign.Center)
+        Text(history.perusahaan, modifier = Modifier.weight(1.5f), fontSize = 12.sp, textAlign = TextAlign.Center)
+        Text(history.platNomor, modifier = Modifier.weight(1.5f), fontSize = 12.sp, textAlign = TextAlign.Center)
+        Text(
+            text = history.status,
+            modifier = Modifier.weight(1f),
+            fontSize = 12.sp,
+            textAlign = TextAlign.Center,
+            color = if(history.status == "Normal") Color(0xFF0C5900) else Color(0xFFE33629),
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun BerandaScreenPreview() {
+    Beranda(navController = rememberNavController())
 }
