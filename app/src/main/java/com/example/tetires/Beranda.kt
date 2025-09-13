@@ -60,6 +60,7 @@ fun Beranda(navController: NavController) {
     }
 }
 
+// Top App Section
 @Composable
 fun TopAppBar() {
     Row(
@@ -84,6 +85,7 @@ fun TopAppBar() {
     }
 }
 
+// Hero Section
 @Composable
 fun HeroBanner (navController: NavController) {
     Box(
@@ -129,6 +131,7 @@ fun HeroBanner (navController: NavController) {
     }
 }
 
+// History Section
 @Composable
 fun HistorySection(listHistoryPengecekan: List<PengecekanHistory>) {
     Column(
@@ -167,6 +170,7 @@ fun HistorySection(listHistoryPengecekan: List<PengecekanHistory>) {
     }
 }
 
+// History Table Section
 @Composable
 fun HistoryTable(listHistoryPengecekan: List<PengecekanHistory>) {
     Column {
@@ -193,6 +197,7 @@ fun HistoryTable(listHistoryPengecekan: List<PengecekanHistory>) {
     }
 }
 
+// History Row
 @Composable
 fun HistoryRow(history: PengecekanHistory) {
     Row(
