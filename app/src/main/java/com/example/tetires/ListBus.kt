@@ -67,7 +67,7 @@ fun ListBusScreen(navController: NavController) {
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF2596be),
+                    containerColor = Color(0xFF19A7CE),
                     titleContentColor = Color.Black,
                     navigationIconContentColor = Color.Black
                 )
@@ -89,12 +89,14 @@ fun ListBusScreen(navController: NavController) {
                 .padding(paddingValues)
         ) {
             BusListHeader()
-            Column{
-                Spacer(modifier = Modifier.height(180.dp))
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ){
+                Spacer(modifier = Modifier.height(220.dp - 24.dp))
                 SearchBar()
                 LazyColumn(
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    contentPadding = PaddingValues(horizontal = 20.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(busList) { bus ->
                         BusListItem(bus = bus)
@@ -111,7 +113,7 @@ fun BusListHeader() {
         modifier = Modifier
             .fillMaxWidth()
             .height(220.dp)
-            .background(Color(0xFF2596be)),
+            .background(Color(0xFF19A7CE)),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -140,23 +142,23 @@ fun BusListItem(bus: Bus) {
             .fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFAFD3E2)),
         onClick = { /* TODO: Navigasi ke halaman detail bus */ }
     ) {
         Row(
             modifier = Modifier
-                .padding(16.dp)
+                .padding(20.dp)
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(bus.nama, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                Text(bus.platNomor, color = Color.Gray, fontSize = 14.sp)
+                Text(bus.platNomor, color = Color.Black, fontSize = 14.sp)
             }
             Column(horizontalAlignment = Alignment.End) {
                 StatusBadge(status = bus.statusBan)
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(bus.tanggalPemeriksaan, color = Color.Gray, fontSize = 12.sp)
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(bus.tanggalPemeriksaan, color = Color.Black, fontSize = 10.sp)
             }
         }
     }
@@ -169,8 +171,10 @@ fun SearchBar() {
         value = "",
         onValueChange = {},
         modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp),
+            .width(350.dp)
+            .height(48.dp)
+            .padding(horizontal = 12.dp, vertical = 4.dp)
+            .offset(y = (-5).dp),
         leadingIcon = {
             Icon(
                 painter = painterResource(id = R.drawable.filtericon),
@@ -201,7 +205,7 @@ fun StatusBadge(status: BusStatus) {
             .clip(RoundedCornerShape(50))
             .border(BorderStroke(1.dp, Color.Black), shape = RoundedCornerShape(50))
             .background(color)
-            .padding(horizontal = 12.dp, vertical = 6.dp)
+            .padding(horizontal = 10.dp, vertical = 6.dp)
     ) {
         Text(text, color = Color.Black, fontSize = 12.sp, fontWeight = FontWeight.Medium)
     }
