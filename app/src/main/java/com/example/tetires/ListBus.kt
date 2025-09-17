@@ -20,6 +20,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -60,7 +62,12 @@ fun ListBusScreen(navController: NavController) {
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Daftar Bus") },
+                title = {
+                    Text(
+                        text = "Daftar Bus",
+                        fontWeight = FontWeight.Bold
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
@@ -92,10 +99,10 @@ fun ListBusScreen(navController: NavController) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally
             ){
-                Spacer(modifier = Modifier.height(220.dp - 24.dp))
+                Spacer(modifier = Modifier.height(180.dp))
                 SearchBar()
                 LazyColumn(
-                    contentPadding = PaddingValues(horizontal = 20.dp),
+                    contentPadding = PaddingValues(horizontal = 24.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(busList) { bus ->
@@ -112,7 +119,7 @@ fun BusListHeader() {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .height(220.dp)
+            .height(185.dp)
             .background(Color(0xFF19A7CE)),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
@@ -125,7 +132,7 @@ fun BusListHeader() {
                 .height(120.dp)
                 .width(200.dp)
         )
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(6.dp))
         Text(
             text = "Bus apa yang mau dicek hari ini?",
             color = Color.Black,
@@ -174,7 +181,7 @@ fun SearchBar() {
             .width(350.dp)
             .height(48.dp)
             .padding(horizontal = 12.dp, vertical = 4.dp)
-            .offset(y = (-5).dp),
+            .offset(y = (-16).dp),
         leadingIcon = {
             Icon(
                 painter = painterResource(id = R.drawable.filtericon),
