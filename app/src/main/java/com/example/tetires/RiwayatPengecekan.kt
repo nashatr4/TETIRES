@@ -12,8 +12,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -83,9 +82,10 @@ fun RiwayatPengecekan(navController: NavController) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .background(Color(0xFF19A7CE))
+                .background(Color(0xFFFFFFFF))
         ) {
             HeaderDeskripsiBus()
+            Spacer(modifier = Modifier.height(12.dp))
             RiwayatSection(RiwayatPengecekanList = RiwayatPengecekanList)
         }
     }
@@ -93,34 +93,56 @@ fun RiwayatPengecekan(navController: NavController) {
 
 @Composable
 fun HeaderDeskripsiBus() {
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .background(Color(0xFF19A7CE))
-            .padding(start = 24.dp, end = 24.dp, bottom = 24.dp)
+            .height(185.dp)
+            .padding(horizontal = 24.dp, vertical = 20.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(text = "Sinar Jaya", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                Text(text = "AB 8874 GH", color = Color.White, fontSize = 18.sp)
+            // Bagian kiri
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = "Sinar Jaya",
+                    color = Color.Black,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "AB 8874 GH",
+                    color = Color.Black,
+                    fontSize = 18.sp
+                )
             }
-            Image(
-                painter = painterResource(id=R.drawable.busicon),
-                contentDescription = "Ilustrasi Bus",
-                modifier = Modifier.size(100.dp)
-            )
-        }
-        Spacer(modifier = Modifier.height(16.dp))
-        Button(
-            onClick = { /* Navigasi ke Cek Ban */ },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3949A3))
-        ) {
-            Text("Cek Ban", modifier = Modifier.padding(vertical = 8.dp))
+
+            // Bagian kanan
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.busicon),
+                    contentDescription = "Ilustrasi Bus",
+                    modifier = Modifier
+                        .height(90.dp)
+                        .width(150.dp)
+                )
+                Spacer(modifier = Modifier.height(5.dp))
+                Button(
+                    onClick = { /* Navigasi ke Cek Ban */ },
+                    shape = RoundedCornerShape(50.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3949A3)),
+                    contentPadding = PaddingValues(horizontal = 60.dp, vertical = 3.dp)
+                ) {
+                    Text("Cek Ban")
+                }
+            }
         }
     }
 }
@@ -130,19 +152,93 @@ fun RiwayatSection(RiwayatPengecekanList: List<RiwayatPemeriksaan>) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+            .background(Color.White)
+            .padding(horizontal = 16.dp)
     ) {
         Text("Riwayat Pemeriksaan", fontWeight = FontWeight.Bold, fontSize = 18.sp)
         Spacer(modifier = Modifier.height(8.dp))
         // Header Tabel
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            Text("D-KI", modifier = Modifier.width(40.dp), textAlign = TextAlign.Center, color = Color.Black)
-            Text("D-KA", modifier = Modifier.width(40.dp), textAlign = TextAlign.Center, color = Color.Black)
-            Text("B-KI", modifier = Modifier.width(40.dp), textAlign = TextAlign.Center, color = Color.Black)
-            Text("B-KI", modifier = Modifier.width(40.dp), textAlign = TextAlign.Center, color = Color.Black)
-            Spacer(modifier = Modifier.height(40.dp))
-        }
-        Spacer(modifier = Modifier.height(8.dp))
+        Row(modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Tanggal",
+                modifier = Modifier.width(125.dp),
+                textAlign = TextAlign.Left
+            )
 
+            Spacer(modifier = Modifier.width(13.dp))
+            Box(modifier = Modifier.width(36.dp), contentAlignment = Alignment.Center) {
+                Text("D-KI", color = Color.Black)
+            }
+            Box(modifier = Modifier.width(36.dp), contentAlignment = Alignment.Center) {
+                Text("D-KA", color = Color.Black)
+            }
+            Box(modifier = Modifier.width(36.dp), contentAlignment = Alignment.Center) {
+                Text("B-KI", color = Color.Black)
+            }
+            Box(modifier = Modifier.width(36.dp), contentAlignment = Alignment.Center) {
+                Text("B-KA", color = Color.Black)
+            }
+            Spacer(modifier = Modifier.height(48.dp))
+        }
+        Spacer(modifier = Modifier.height(5.dp))
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            items(RiwayatPengecekanList) { riwayat ->
+                RiwayatListItem(pemeriksaan = riwayat)
+            }
+        }
     }
+}
+
+@Composable
+fun RiwayatListItem(pemeriksaan: RiwayatPemeriksaan) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(50),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFAFD3E2)),
+        border = BorderStroke(1.dp, Color.Black),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(pemeriksaan.tanggal, modifier = Modifier.weight(1f), fontWeight = FontWeight.Medium)
+            HorizontalDivider(
+                modifier = Modifier
+                    .height(50.dp)
+                    .width(1.dp), color = Color.LightGray
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            StatusDot(status = pemeriksaan.statusBanDKI)
+            StatusDot(status = pemeriksaan.statusBanDKA)
+            StatusDot(status = pemeriksaan.statusBanBKI)
+            StatusDot(status = pemeriksaan.statusBanBKA)
+            IconButton(onClick = { /*TODO*/ }) {
+                Icon(Icons.Default.MoreVert, contentDescription = "Opsi")
+            }
+        }
+    }
+}
+
+@Composable
+fun StatusDot(status : BanStatus) {
+    val color = if (status == BanStatus.AMAN) Color(0xFF10B981) else Color(0xFFEF4444)
+    Box(
+        modifier = Modifier
+            .padding(horizontal = 8.dp)
+            .size(20.dp)
+            .clip(CircleShape)
+            .background(color)
+            .border(width = 1.dp, color = Color.Black, shape = CircleShape)
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun RiwayatPengecekan() {
+    RiwayatPengecekan(navController = rememberNavController())
 }
