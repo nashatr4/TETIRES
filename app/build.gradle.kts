@@ -78,6 +78,7 @@ dependencies {
 
     // Compose BOM
     implementation(platform(libs.androidx.compose.bom))
+
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
@@ -87,6 +88,14 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:$navVersion")
 
     // Testing
+    implementation(libs.androidx.ui)
+    implementation(libs.androidx.ui.graphics)
+    implementation(libs.androidx.ui.tooling.preview)
+    implementation(libs.androidx.material3)
+    implementation("androidx.navigation:navigation-compose:$nav_version")
+    implementation("androidx.compose.material:material-icons-core:1.6.8")
+    implementation("androidx.compose.material:material-icons-extended:1.6.8")
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
