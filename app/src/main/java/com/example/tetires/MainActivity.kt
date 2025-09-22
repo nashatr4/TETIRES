@@ -34,6 +34,14 @@ class MainActivity : ComponentActivity() {
                         composable(route = "beranda") {
                             Beranda(navController = navController)
                         }
+                        composable(route = "list_bus") {
+                            ListBusScreen(navController = navController)
+                        }
+
+                        composable("riwayat/{busId}") { backStackEntry ->
+                            // Bisa pakai busId kalau mau ambil data spesifik bus
+                            RiwayatPengecekan(navController = navController)
+                        }
                     }
                 }
             }

@@ -12,7 +12,7 @@ android {
     defaultConfig {
         applicationId = "com.example.tetires"
         minSdk = 31
-        targetSdk = 35
+        targetSdk = 36  // disamakan dengan compileSdk
         versionCode = 1
         versionName = "1.0"
 
@@ -32,6 +32,7 @@ android {
             )
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -39,42 +40,60 @@ android {
     kotlinOptions {
         jvmTarget = "11"
     }
+
     buildFeatures {
         compose = true
     }
+
     flavorDimensions += "pyVersion"
     productFlavors {
-        create("py311") { dimension = "pyVersion"}
+        create("py310") {
+            dimension = "pyVersion"
+        }
     }
 }
 
 chaquopy {
     defaultConfig {
-        buildPython("C:/Users/Nashatra/AppData/Local/Programs/Python/Python311/python.exe")
+        // Path Python harus pakai escape di Windows
+        buildPython("C:\\Users\\msi\\AppData\\Local\\Programs\\Python\\Python310\\python.exe")
     }
+
     productFlavors {
-        getByName("py311") { version = "3.11"}
+        getByName("py310") {
+            version = "3.10"
+        }
     }
+
     sourceSets {}
 }
 
 dependencies {
-    val nav_version = "2.9.4"
+    val navVersion = "2.9.4"
 
+    // Core & Lifecycle
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
+
+    // Compose BOM
     implementation(platform(libs.androidx.compose.bom))
-    implementation(libs.androidx.ui)
-    implementation(libs.androidx.ui.graphics)
-    implementation(libs.androidx.ui.tooling.preview)
-    implementation(libs.androidx.material3)
-    implementation("androidx.navigation:navigation-compose:$nav_version")
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.ui:ui-graphics")
+    implementation("androidx.compose.ui:ui-tooling-preview")
+    implementation("androidx.compose.material3:material3")
+
+    // Navigation Compose
+    implementation("androidx.navigation:navigation-compose:$navVersion")
+
+    // Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
-    androidTestImplementation(libs.androidx.ui.test.junit4)
-    debugImplementation(libs.androidx.ui.tooling)
-    debugImplementation(libs.androidx.ui.test.manifest)
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+
+    // Debug
+    debugImplementation("androidx.compose.ui:ui-tooling")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }

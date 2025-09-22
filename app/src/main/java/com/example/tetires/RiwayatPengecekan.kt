@@ -239,6 +239,6 @@ fun StatusDot(status : BanStatus) {
 
 @Preview(showBackground = true)
 @Composable
-fun RiwayatPengecekan() {
+fun RiwayatPengecekanPreview() {
     RiwayatPengecekan(navController = rememberNavController())
 }
