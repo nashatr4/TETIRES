@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.layout.ContentScale
 import androidx.navigation.NavController
+import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.tetires.R
 
@@ -103,7 +104,10 @@ fun ListBusScreen(navController: NavController) {
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(busList) { bus ->
-                        BusListItem(bus = bus)
+                        BusListItem(
+                            bus = bus,
+                            navController = navController // pakai navController dari parameter
+                        )
                     }
                 }
             }
@@ -140,14 +144,16 @@ fun BusListHeader() {
 }
 
 @Composable
-fun BusListItem(bus: Bus) {
+fun BusListItem(bus: Bus, navController: NavController) {
     Card(
         modifier = Modifier
             .fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFFAFD3E2)),
-        onClick = { /* TODO: Navigasi ke halaman detail bus */ }
+        onClick = {
+            navController.navigate("riwayat/${bus.id}") // arah ke riwayat
+        }
     ) {
         Row(
             modifier = Modifier
