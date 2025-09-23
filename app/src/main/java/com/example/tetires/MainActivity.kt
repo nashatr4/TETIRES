@@ -42,6 +42,10 @@ class MainActivity : ComponentActivity() {
                             // Bisa pakai busId kalau mau ambil data spesifik bus
                             RiwayatPengecekan(navController = navController)
                         }
+
+                        composable(route = "menambah_bus") {
+                            MenambahBus(navController = navController)
+                        }
                     }
                 }
             }

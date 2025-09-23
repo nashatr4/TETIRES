@@ -12,12 +12,14 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 
@@ -104,42 +106,63 @@ fun BusLayout(
     statusBan: Map<PosisiBan, StatusPengecekan>,
     onTireClick: (PosisiBan) -> Unit,
 ) {
-    Box(
+    ConstraintLayout(
         modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = 40.dp),
-        contentAlignment = Alignment.Center
+            .fillMaxSize()
     ) {
+        val (busImage, iconDKI, iconDKA, iconBKI, iconBKA) = createRefs()
+
+        // Garis bantu horizontal
+        val topGuideline = createGuidelineFromTop(0.3f)     // Garis di 30% dari atas
+        val bottomGuideline = createGuidelineFromBottom(0.3f) // Garis di 30% dari bawah
+
+        // Garis bantu vertikal
+        val startGuideline = createGuidelineFromStart(0.1f) // Garis di 10% dari kiri
+        val endGuideline = createGuidelineFromEnd(0.1f)   // Garis di 10% dari kanan
+
         Image(
             painter = painterResource(id = R.drawable.buscekban),
             contentDescription = "Bus",
-            modifier = Modifier.size(400.dp)
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .fillMaxHeight(0.9f)
+                .aspectRatio(0.35f)
+                .constrainAs(busImage) {
+                    top.linkTo(parent.top)
+                    bottom.linkTo(parent.bottom)
+                    start.linkTo(parent.start)
+                    end.linkTo(parent.end)
+                }
         )
         StatusIcon(
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .offset(x = 40.dp, y = 120.dp),
+            modifier = Modifier.constrainAs(iconDKI) {
+                top.linkTo(topGuideline)
+                start.linkTo(startGuideline)
+            },
             status = statusBan.getValue(PosisiBan.D_KI),
             onClick = { onTireClick(PosisiBan.D_KI) }
         )
         StatusIcon(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .offset(x = (-40).dp, y = 120.dp),
+            modifier = Modifier.constrainAs(iconDKA) {
+                top.linkTo(topGuideline)
+                end.linkTo(endGuideline)
+            },
             status = statusBan.getValue(PosisiBan.D_KA),
             onClick = { onTireClick(PosisiBan.D_KA) }
         )
         StatusIcon(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .offset(x = 40.dp, y = (-120).dp),
+            modifier = Modifier.constrainAs(iconBKI) {
+                bottom.linkTo(bottomGuideline)
+                start.linkTo(startGuideline)
+            },
             status = statusBan.getValue(PosisiBan.B_KI),
             onClick = { onTireClick(PosisiBan.B_KI) }
         )
         StatusIcon(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .offset(x = (-40).dp, y = (-120).dp),
+            modifier = Modifier.constrainAs(iconBKA) {
+                bottom.linkTo(bottomGuideline)
+                end.linkTo(endGuideline)
+            },
             status = statusBan.getValue(PosisiBan.B_KA),
             onClick = { onTireClick(PosisiBan.B_KA) }
         )

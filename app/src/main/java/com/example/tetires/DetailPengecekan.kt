@@ -65,12 +65,12 @@ fun DetailPengecekan(navController: NavController) {
             Spacer(modifier = Modifier.height(24.dp))
             // Baris Pertama
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Box(modifier = Modifier.weight(1f)) {
                     DetailBanCard(detail = detailPengecekan[0])
                 }
+                Spacer(modifier = Modifier.width(16.dp))
                 Box(modifier = Modifier.weight(1f)) {
                     DetailBanCard(detail = detailPengecekan[1])
                 }
@@ -79,11 +79,11 @@ fun DetailPengecekan(navController: NavController) {
             // Baris Kedua
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Box(modifier = Modifier.weight(1f)) {
                     DetailBanCard(detail = detailPengecekan[2])
                 }
+                Spacer(modifier = Modifier.width(16.dp))
                 Box(modifier = Modifier.weight(1f)) {
                     DetailBanCard(detail = detailPengecekan[3])
                 }

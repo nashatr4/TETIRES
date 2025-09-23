@@ -80,7 +80,7 @@ fun ListBusScreen(navController: NavController) {
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { /* TODO: Navigasi ke halaman tambah bus */ },
+                onClick = { navController.navigate("menambah_bus") },
                 shape = CircleShape,
                 containerColor = Color(0xFF3A5FCD)
             ) {
@@ -94,21 +94,19 @@ fun ListBusScreen(navController: NavController) {
                 .padding(paddingValues)
         ) {
             BusListHeader()
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally
-            ){
-                Spacer(modifier = Modifier.height(180.dp))
-                SearchBar()
-                LazyColumn(
-                    contentPadding = PaddingValues(horizontal = 24.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    items(busList) { bus ->
-                        BusListItem(
-                            bus = bus,
-                            navController = navController // pakai navController dari parameter
-                        )
-                    }
+            LazyColumn(
+                contentPadding = PaddingValues(top = 185.dp, bottom = 16.dp, start = 24.dp, end = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                item {
+                    SearchBar()
+                }
+
+                items(busList) { bus ->
+                    BusListItem(
+                        bus = bus,
+                        navController = navController
+                    )
                 }
             }
         }
@@ -120,20 +118,20 @@ fun BusListHeader() {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .height(185.dp)
-            .background(Color(0xFF19A7CE)),
+            .background(Color(0xFF19A7CE))
+            .padding(bottom = 40.dp, top = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         Image(
-            painter = painterResource(id = R.drawable.busicon), // Ganti dengan ilustrasi Anda
+            painter = painterResource(id = R.drawable.busicon),
             contentDescription = "Ilustrasi Bus",
             contentScale = ContentScale.Fit,
             modifier = Modifier
-                .height(120.dp)
-                .width(200.dp)
+                .fillMaxWidth(0.5f)
+                .aspectRatio(1.6f)
         )
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = "Bus apa yang mau dicek hari ini?",
             color = Color.Black,
@@ -144,7 +142,7 @@ fun BusListHeader() {
 }
 
 @Composable
-fun BusListItem(bus: Bus, navController: NavController) {
+fun BusListItem(bus: Bus, navController: NavController, modifier: Modifier = Modifier) {
     Card(
         modifier = Modifier
             .fillMaxWidth(),
@@ -181,10 +179,9 @@ fun SearchBar() {
         value = "",
         onValueChange = {},
         modifier = Modifier
-            .width(350.dp)
+            .fillMaxWidth()
             .height(48.dp)
-            .padding(horizontal = 12.dp, vertical = 4.dp)
-            .offset(y = (-16).dp),
+            .padding(horizontal = 24.dp),
         leadingIcon = {
             Icon(
                 painter = painterResource(id = R.drawable.filtericon),

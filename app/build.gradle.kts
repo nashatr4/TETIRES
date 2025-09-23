@@ -12,7 +12,7 @@ android {
     defaultConfig {
         applicationId = "com.example.tetires"
         minSdk = 31
-        targetSdk = 36  // disamakan dengan compileSdk
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0"
 
@@ -75,6 +75,8 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.navigation.compose)
+    implementation("androidx.constraintlayout:constraintlayout-compose:1.1.1")
 
     // Compose BOM
     implementation(platform(libs.androidx.compose.bom))
@@ -92,7 +94,6 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
-    implementation("androidx.navigation:navigation-compose:$nav_version")
     implementation("androidx.compose.material:material-icons-core:1.6.8")
     implementation("androidx.compose.material:material-icons-extended:1.6.8")
 
