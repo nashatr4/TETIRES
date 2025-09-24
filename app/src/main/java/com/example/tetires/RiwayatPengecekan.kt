@@ -32,6 +32,7 @@ import java.nio.file.WatchEvent
 
 // Data class untuk merepresentasikan satu item bus
 data class RiwayatPemeriksaan(
+    val id: Int,
     val tanggal: String,
     val statusBanDKI: BanStatus,
     val statusBanDKA: BanStatus,
@@ -49,10 +50,10 @@ enum class BanStatus {
 @Composable
 fun RiwayatPengecekan(navController: NavController) {
     val RiwayatPengecekanList = listOf(
-        RiwayatPemeriksaan("29 April 2025", BanStatus.AMAN, BanStatus.AMAN, BanStatus.AMAN, BanStatus.AUS),
-        RiwayatPemeriksaan("29 Maret 2025", BanStatus.AMAN, BanStatus.AMAN, BanStatus.AMAN, BanStatus.AMAN),
-        RiwayatPemeriksaan("28 Februari 2025", BanStatus.AMAN, BanStatus.AMAN, BanStatus.AMAN, BanStatus.AMAN),
-        RiwayatPemeriksaan("29 Januari 2025", BanStatus.AMAN, BanStatus.AMAN, BanStatus.AMAN, BanStatus.AUS)
+        RiwayatPemeriksaan(4, "29 April 2025", BanStatus.AMAN, BanStatus.AMAN, BanStatus.AMAN, BanStatus.AUS),
+        RiwayatPemeriksaan(3, "29 Maret 2025", BanStatus.AMAN, BanStatus.AMAN, BanStatus.AMAN, BanStatus.AMAN),
+        RiwayatPemeriksaan(2, "28 Februari 2025", BanStatus.AMAN, BanStatus.AMAN, BanStatus.AMAN, BanStatus.AMAN),
+        RiwayatPemeriksaan(1, "29 Januari 2025", BanStatus.AMAN, BanStatus.AMAN, BanStatus.AMAN, BanStatus.AUS)
     )
 
     Scaffold(
@@ -84,7 +85,7 @@ fun RiwayatPengecekan(navController: NavController) {
                 .padding(paddingValues)
                 .background(Color(0xFFFFFFFF))
         ) {
-            HeaderDeskripsiBus()
+            HeaderDeskripsiBus(navController)
             Spacer(modifier = Modifier.height(12.dp))
             RiwayatSection(RiwayatPengecekanList = RiwayatPengecekanList)
         }
@@ -92,7 +93,7 @@ fun RiwayatPengecekan(navController: NavController) {
 }
 
 @Composable
-fun HeaderDeskripsiBus() {
+fun HeaderDeskripsiBus(navController: NavController) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -134,7 +135,7 @@ fun HeaderDeskripsiBus() {
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Button(
-                    onClick = { /* Navigasi ke Cek Ban */ },
+                    onClick = { /* Ke Cek Ban */ },
                     shape = RoundedCornerShape(50.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3949A3)),
                     contentPadding = PaddingValues(vertical = 4.dp, horizontal = 24.dp)

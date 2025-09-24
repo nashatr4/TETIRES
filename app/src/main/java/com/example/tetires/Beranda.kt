@@ -33,6 +33,7 @@ data class PengecekanHistory(
     val status: String
 )
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Beranda(navController: NavController) {
     // Dummy Data
@@ -45,7 +46,34 @@ fun Beranda(navController: NavController) {
     )
 
     Scaffold(
-        topBar = { TopAppBar() }
+        topBar = {
+            TopAppBar(
+                title = {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.tirelogo),
+                            contentDescription = "Logo Tetires Hitam",
+                            modifier = Modifier.size(30.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "TETIRES",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.White,
+                    titleContentColor = Color.Black
+                )
+            )
+        }
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -59,36 +87,10 @@ fun Beranda(navController: NavController) {
     }
 }
 
-// Top App Section
-@Composable
-fun TopAppBar() {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color.White)
-            .padding(vertical = 16.dp),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Image(
-            painter = painterResource(id = R.drawable.tirelogo),
-            contentDescription = "Logo Tetires Hitam",
-            modifier = Modifier.size(30.dp)
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = "TETIRES",
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.Black
-        )
-    }
-}
-
 // Hero Section
 @Composable
 fun HeroBanner (navController: NavController) {
-    BoxWithConstraints(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .background(Color(0xFF4A90E2))
