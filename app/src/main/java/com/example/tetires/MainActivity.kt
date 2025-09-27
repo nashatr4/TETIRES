@@ -106,6 +106,18 @@ class MainActivity : ComponentActivity() {
                             }
 
                         }
+
+                        composable(route = "menambah_bus") {
+                            MenambahBus(navController = navController)
+                        }
+
+                        composable(route = "cek_ban/{cekId}") { backStackEntry ->
+                            CekBan(navController = navController)
+                        }
+
+                        composable(route = "detail_pengecekan/{detailId") { backStackEntry ->
+                            DetailPengecekan(navController = navController)
+                        }
                     }
                 }
             }

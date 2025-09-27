@@ -1,6 +1,5 @@
 package com.example.tetires
 
-import android.view.RoundedCorner
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -10,16 +9,15 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
-
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -27,7 +25,6 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.example.tetires.R
-import java.nio.file.WatchEvent
 
 data class PengecekanHistory(
     val tanggal: String,
@@ -36,6 +33,7 @@ data class PengecekanHistory(
     val status: String
 )
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Beranda(navController: NavController) {
     // Dummy Data
@@ -47,41 +45,45 @@ fun Beranda(navController: NavController) {
         PengecekanHistory("24 April 2025", "Sinar Jaya", "AB 8866 GH", "Normal"),
     )
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.White)
-    ) {
-        TopAppBar()
-        Spacer(modifier = Modifier.height(16.dp))
-        HeroBanner(navController = navController)
-        Spacer(modifier = Modifier.height(16.dp))
-        HistorySection(listHistoryPengecekan = listHistoryPengecekan)
-    }
-}
-
-// Top App Section
-@Composable
-fun TopAppBar() {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 16.dp),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Image(
-            painter = painterResource(id = R.drawable.tirelogo),
-            contentDescription = "Logo Tetires Hitam",
-            modifier = Modifier.size(30.dp)
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = "TETIRES",
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.Black
-        )
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.tirelogo),
+                            contentDescription = "Logo Tetires Hitam",
+                            modifier = Modifier.size(30.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "TETIRES",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.White,
+                    titleContentColor = Color.Black
+                )
+            )
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .background(Color(0xFF4A90E2))
+        ) {
+            HeroBanner(navController = navController)
+            HistorySection(listHistoryPengecekan = listHistoryPengecekan)
+        }
     }
 }
 
@@ -91,38 +93,39 @@ fun HeroBanner (navController: NavController) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(140.dp)
-            .padding(horizontal = 16.dp)
-            .clip(RoundedCornerShape(16.dp))
             .background(Color(0xFF4A90E2))
     ) {
         Row(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Image(
                 painter = painterResource(id = R.drawable.sadtire),
                 contentDescription = "Ilustrasi Ban",
-                modifier = Modifier.size(80.dp)
+                modifier = Modifier
+                    .fillMaxHeight(0.2f)
+                    .fillMaxWidth(0.4f)
             )
-            Spacer(modifier = Modifier.width(16.dp))
-            Column {
+            Spacer(modifier = Modifier.width(10.dp))
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "Ayo lakukan pengecekan ban busmu!",
-                    color = Color.White,
+                    color = Color.Black,
+                    textAlign = TextAlign.Center,
                     fontSize = 18.sp,
                     lineHeight = 20.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 Button(
                     onClick = { navController.navigate("list_bus") },
-                    shape = RoundedCornerShape(8.dp),
+                    shape = RoundedCornerShape(40.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3949A3)),
-                    modifier = Modifier.height(32.dp),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp)
+                    modifier = Modifier.fillMaxWidth(),
+                    contentPadding = PaddingValues(vertical = 8.dp)
                 ) {
                     Text(text = "Lihat Bus", color = Color.White)
                 }
@@ -137,35 +140,44 @@ fun HistorySection(listHistoryPengecekan: List<PengecekanHistory>) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .clip(RoundedCornerShape(topStart = 15.dp, topEnd = 15.dp))
+            .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
             .background(Color(0xFFAFD3E2))
-            .padding(24.dp)
+            .padding(horizontal = 16.dp, vertical = 24.dp)
     ) {
-        // SearchBar
-        OutlinedTextField(
-            value = "",
-            onValueChange = { },
-            modifier = Modifier
-                .height(48.dp)
-                .fillMaxWidth(),
-            placeholder = { Text("Cari berdasarkan plat nomor")},
-            leadingIcon = {
-                Icon(
-                    painter = painterResource(id=R.drawable.filtericon),
-                    contentDescription = "Filter Icon",
-                    modifier = Modifier.size(20.dp)
+            // SearchBar
+            TextField(
+                value = "",
+                onValueChange = { },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp)
+                    .shadow(elevation = 4.dp, shape = RoundedCornerShape(50))
+                    .clip(RoundedCornerShape(30)),
+                placeholder = { Text(text = "Cari berdasarkan plat nomor", fontSize = 14.sp) } ,
+                leadingIcon = {
+                    Icon(
+                        painter = painterResource(id=R.drawable.filtericon),
+                        contentDescription = "Filter Icon",
+                        modifier = Modifier.size(20.dp)
+                    )
+                },
+                trailingIcon = {
+                    Icon(Icons.Default.Search,
+                        contentDescription = "Search Icon",
+                        modifier = Modifier.size(20.dp))
+                },
+                shape = RoundedCornerShape(50),
+                colors = TextFieldDefaults.colors(
+                    unfocusedContainerColor = Color.White,
+                    focusedContainerColor = Color.White,
+                    disabledContainerColor = Color.White,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    disabledIndicatorColor = Color.Transparent
                 )
-            },
-            trailingIcon = {
-                Icon(Icons.Default.Search,
-                    contentDescription = "Search Icon",
-                    modifier = Modifier.size(20.dp))
-            },
-            shape = RoundedCornerShape(50)
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-
-        //History Table
+            )
+        Spacer(modifier = Modifier.height(25.dp))
+        // History Table
         HistoryTable(listHistoryPengecekan = listHistoryPengecekan)
     }
 }
@@ -177,18 +189,18 @@ fun HistoryTable(listHistoryPengecekan: List<PengecekanHistory>) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xFF3949A3), shape = RoundedCornerShape(8.dp))
+                .background(Color(0xFF3949A3))
                 .padding(vertical = 8.dp, horizontal = 8.dp)
         ) {
-            Text("Tanggal", modifier = Modifier.weight(1f), color = Color.White, textAlign = TextAlign.Center)
-            Text("Perusahaan Bus", modifier = Modifier.weight(1.5f), color = Color.White, textAlign = TextAlign.Center)
-            Text("Plat Nomor", modifier = Modifier.weight(1.5f), color = Color.White, textAlign = TextAlign.Center)
-            Text("Status", modifier = Modifier.weight(1f), color = Color.White, textAlign = TextAlign.Center)
+            Text("Tanggal", modifier = Modifier.weight(1f), color = Color.White, textAlign = TextAlign.Center, fontSize = 14.sp)
+            Text("Perusahaan Bus", modifier = Modifier.weight(1.5f), color = Color.White, textAlign = TextAlign.Center, maxLines = 1, fontSize = 14.sp)
+            Text("Plat Nomor", modifier = Modifier.weight(1.5f), color = Color.White, textAlign = TextAlign.Center, fontSize = 14.sp)
+            Text("Status", modifier = Modifier.weight(1f), color = Color.White, textAlign = TextAlign.Center, fontSize = 14.sp)
         }
         Spacer(modifier = Modifier.height(8.dp))
 
         // Body (Scrollable)
-        LazyColumn {
+        LazyColumn(modifier = Modifier.fillMaxSize()) {
             items(listHistoryPengecekan) {
                 history -> HistoryRow(history = history)
                 Spacer(modifier = Modifier.height(4.dp))

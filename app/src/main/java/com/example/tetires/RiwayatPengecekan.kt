@@ -32,6 +32,7 @@ import java.nio.file.WatchEvent
 
 // Data class untuk merepresentasikan satu item bus
 data class RiwayatPemeriksaan(
+    val id: Int,
     val tanggal: String,
     val statusBanDKI: BanStatus,
     val statusBanDKA: BanStatus,
@@ -49,10 +50,10 @@ enum class BanStatus {
 @Composable
 fun RiwayatPengecekan(navController: NavController) {
     val RiwayatPengecekanList = listOf(
-        RiwayatPemeriksaan("29 April 2025", BanStatus.AMAN, BanStatus.AMAN, BanStatus.AMAN, BanStatus.AUS),
-        RiwayatPemeriksaan("29 Maret 2025", BanStatus.AMAN, BanStatus.AMAN, BanStatus.AMAN, BanStatus.AMAN),
-        RiwayatPemeriksaan("28 Februari 2025", BanStatus.AMAN, BanStatus.AMAN, BanStatus.AMAN, BanStatus.AMAN),
-        RiwayatPemeriksaan("29 Januari 2025", BanStatus.AMAN, BanStatus.AMAN, BanStatus.AMAN, BanStatus.AUS)
+        RiwayatPemeriksaan(4, "29 April 2025", BanStatus.AMAN, BanStatus.AMAN, BanStatus.AMAN, BanStatus.AUS),
+        RiwayatPemeriksaan(3, "29 Maret 2025", BanStatus.AMAN, BanStatus.AMAN, BanStatus.AMAN, BanStatus.AMAN),
+        RiwayatPemeriksaan(2, "28 Februari 2025", BanStatus.AMAN, BanStatus.AMAN, BanStatus.AMAN, BanStatus.AMAN),
+        RiwayatPemeriksaan(1, "29 Januari 2025", BanStatus.AMAN, BanStatus.AMAN, BanStatus.AMAN, BanStatus.AUS)
     )
 
     Scaffold(
@@ -84,7 +85,7 @@ fun RiwayatPengecekan(navController: NavController) {
                 .padding(paddingValues)
                 .background(Color(0xFFFFFFFF))
         ) {
-            HeaderDeskripsiBus()
+            HeaderDeskripsiBus(navController)
             Spacer(modifier = Modifier.height(12.dp))
             RiwayatSection(RiwayatPengecekanList = RiwayatPengecekanList)
         }
@@ -92,12 +93,11 @@ fun RiwayatPengecekan(navController: NavController) {
 }
 
 @Composable
-fun HeaderDeskripsiBus() {
+fun HeaderDeskripsiBus(navController: NavController) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .background(Color(0xFF19A7CE))
-            .height(185.dp)
             .padding(horizontal = 24.dp, vertical = 20.dp)
     ) {
         Row(
@@ -130,15 +130,15 @@ fun HeaderDeskripsiBus() {
                     painter = painterResource(id = R.drawable.busicon),
                     contentDescription = "Ilustrasi Bus",
                     modifier = Modifier
-                        .height(90.dp)
-                        .width(150.dp)
+                        .fillMaxWidth(0.5f)
+                        .aspectRatio(1.5f)
                 )
-                Spacer(modifier = Modifier.height(5.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 Button(
-                    onClick = { /* Navigasi ke Cek Ban */ },
+                    onClick = { /* Ke Cek Ban */ },
                     shape = RoundedCornerShape(50.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3949A3)),
-                    contentPadding = PaddingValues(horizontal = 60.dp, vertical = 3.dp)
+                    contentPadding = PaddingValues(vertical = 4.dp, horizontal = 24.dp)
                 ) {
                     Text("Cek Ban")
                 }
@@ -154,10 +154,10 @@ fun RiwayatSection(RiwayatPengecekanList: List<RiwayatPemeriksaan>) {
             .fillMaxSize()
             .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
             .background(Color.White)
-            .padding(horizontal = 16.dp)
+            .padding(16.dp)
     ) {
         Text("Riwayat Pemeriksaan", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(10.dp))
         // Header Tabel
         Row(modifier = Modifier
                 .fillMaxWidth()
@@ -165,26 +165,27 @@ fun RiwayatSection(RiwayatPengecekanList: List<RiwayatPemeriksaan>) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text("Tanggal",
-                modifier = Modifier.width(125.dp),
+                modifier = Modifier.weight(2f),
                 textAlign = TextAlign.Left
             )
 
-            Spacer(modifier = Modifier.width(13.dp))
-            Box(modifier = Modifier.width(36.dp), contentAlignment = Alignment.Center) {
-                Text("D-KI", color = Color.Black)
+            Spacer(modifier = Modifier.weight(0.2f))
+
+            Box(modifier = Modifier.weight(0.6f), contentAlignment = Alignment.Center) {
+                Text("D-KI", color = Color.Black, fontSize = 13.sp)
             }
-            Box(modifier = Modifier.width(36.dp), contentAlignment = Alignment.Center) {
-                Text("D-KA", color = Color.Black)
+            Box(modifier = Modifier.weight(0.6f), contentAlignment = Alignment.Center) {
+                Text("D-KA", color = Color.Black, fontSize = 13.sp)
             }
-            Box(modifier = Modifier.width(36.dp), contentAlignment = Alignment.Center) {
-                Text("B-KI", color = Color.Black)
+            Box(modifier = Modifier.weight(0.6f), contentAlignment = Alignment.Center) {
+                Text("B-KI", color = Color.Black, fontSize = 13.sp)
             }
-            Box(modifier = Modifier.width(36.dp), contentAlignment = Alignment.Center) {
-                Text("B-KA", color = Color.Black)
+            Box(modifier = Modifier.weight(0.6f), contentAlignment = Alignment.Center) {
+                Text("B-KA", color = Color.Black, fontSize = 13.sp)
             }
-            Spacer(modifier = Modifier.height(48.dp))
+            Spacer(modifier = Modifier.weight(0.8f))
         }
-        Spacer(modifier = Modifier.height(5.dp))
+        Spacer(modifier = Modifier.height(8.dp))
         LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             items(RiwayatPengecekanList) { riwayat ->
                 RiwayatListItem(pemeriksaan = riwayat)
