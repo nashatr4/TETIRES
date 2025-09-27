@@ -3,6 +3,8 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     id("com.chaquo.python")
+    id("org.jetbrains.kotlin.kapt")
+
 }
 
 android {
@@ -69,7 +71,11 @@ chaquopy {
 }
 
 dependencies {
+    implementation(libs.androidx.compose.foundation.layout)
+    implementation(libs.androidx.compose.ui.tooling.preview)
+    debugImplementation(libs.androidx.compose.ui.tooling)
     val navVersion = "2.9.4"
+    val roomVersion = "2.6.1" // atau versi terbaru
 
     // Core & Lifecycle
     implementation(libs.androidx.core.ktx)
@@ -86,6 +92,13 @@ dependencies {
     // Navigation Compose
     implementation("androidx.navigation:navigation-compose:$navVersion")
 
+    // Room ORM
+    implementation("androidx.room:room-runtime:$roomVersion")
+    implementation("androidx.room:room-ktx:$roomVersion")
+    kapt("androidx.room:room-compiler:$roomVersion") // kalau pakai kapt
+    // atau
+    // ksp("androidx.room:room-compiler:$roomVersion") // kalau pakai KSP
+
     // Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
@@ -97,3 +110,4 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
+
