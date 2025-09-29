@@ -103,26 +103,24 @@ class TetiresRepository(
         return UpdateResult(complete = isComplete, idCek = idPengecekan)
     }
 
-    fun getLast10Checks(busId: Long?): Flow<List<PengecekanRingkas>> {
-        if (busId == null) return flowOf(emptyList())
-
+    fun getLast10Checks(busId: Long): Flow<List<PengecekanRingkas>> {
         return pengecekanDao.getPengecekanByBus(busId).map { checksWithBus ->
-            checksWithBus.take(10).map { check ->
+            checksWithBus.take(10).map { item ->
                 val isComplete = listOf(
-                    check.statusDka, check.statusDki,
-                    check.statusBka, check.statusBki
+                    item.statusDka, item.statusDki,
+                    item.statusBka, item.statusBki
                 ).all { it != null }
 
                 PengecekanRingkas(
-                    idCek = check.idPengecekan,
-                    tanggalCek = check.tanggalMs,
-                    tanggalReadable = DateUtils.formatDate(check.tanggalMs),
-                    namaBus = check.namaBus,
-                    platNomor = check.platNomor,
-                    statusDka = check.statusDka,
-                    statusDki = check.statusDki,
-                    statusBka = check.statusBka,
-                    statusBki = check.statusBki,
+                    idCek = item.idPengecekan,
+                    tanggalCek = item.tanggalMs,
+                    tanggalReadable = DateUtils.formatDate(item.tanggalMs),
+                    namaBus = item.namaBus,
+                    platNomor = item.platNomor,
+                    statusDka = item.statusDka,
+                    statusDki = item.statusDki,
+                    statusBka = item.statusBka,
+                    statusBki = item.statusBki,
                     summaryStatus = if (isComplete) "Selesai" else "Belum Selesai"
                 )
             }
@@ -149,6 +147,20 @@ class TetiresRepository(
             ukBka = detail.ukBka ?: 0f,
             ukBki = detail.ukBki ?: 0f
         )
+    }
+
+    suspend fun deletePengecekanById(id: Long): Result<Unit> {
+        return try {
+            // Hapus detail ban dulu (foreign key)
+            val details = detailBanDao.getDetailsByCheckId(id)
+            details.forEach { detailBanDao.deleteDetailBan(it) }
+
+            // Baru hapus pengecekan
+            pengecekanDao.deletePengecekanById(id)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     // ========== LOG ==========

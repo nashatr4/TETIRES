@@ -73,6 +73,8 @@ chaquopy {
 dependencies {
     implementation(libs.androidx.compose.foundation.layout)
     implementation(libs.androidx.compose.ui.tooling.preview)
+    implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidx.compose.runtime.livedata)
     debugImplementation(libs.androidx.compose.ui.tooling)
     val navVersion = "2.9.4"
     val roomVersion = "2.6.1" // atau versi terbaru

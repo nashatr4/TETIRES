@@ -99,12 +99,25 @@ class MainViewModel(
         }
     }
 
-
     fun deleteBus(busId: Long) {
         viewModelScope.launch {
             val bus = repository.getBusById(busId)
             if (bus != null) repository.deleteBus(bus)
             else _errorMessage.value = "Bus tidak ditemukan"
+        }
+    }
+
+    fun deletePengecekan(idCek: Long, busId: Long) {
+        viewModelScope.launch {
+            val result = repository.deletePengecekanById(idCek)
+            result.fold(
+                onSuccess = {
+                    loadLast10Checks(busId) // refresh list cek untuk bus ini
+                },
+                onFailure = { e ->
+                    _errorMessage.value = "Gagal menghapus pengecekan: ${e.message}"
+                }
+            )
         }
     }
 
@@ -125,10 +138,10 @@ class MainViewModel(
     fun updateCheckPartial(idCek: Long, posisi: String, ukuran: Float, isAus: Boolean) {
         val posisiEnum = PosisiBan.fromString(posisi)
             ?: run { _errorMessage.value = "Posisi ban tidak valid"; return }
+
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                // ✅ sesuai dengan repository (ukuran dulu, lalu isAus)
                 val result = repository.updateCheckPartial(idCek, posisiEnum, ukuran, isAus)
                 _updateCompleteEvent.value = Event(result.complete)
             } catch (e: Exception) {
@@ -137,7 +150,6 @@ class MainViewModel(
             _isLoading.value = false
         }
     }
-
 
     // ========= LOG / SEARCH =========
     fun searchLogs(query: String? = null, startDate: Long? = null, endDate: Long? = null) {
