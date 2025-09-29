@@ -16,6 +16,7 @@ uiTooling = "1.9.2"
 navigation = "2.9.4"
 foundation = "1.9.2"
 runtimeLivedata = "1.9.2"
+ui = "1.9.2"
 
 
 [libraries]
@@ -41,6 +42,7 @@ androidx-compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-toolin
 navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigation" }
 androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "foundation" }
 androidx-compose-runtime-livedata = { group = "androidx.compose.runtime", name = "runtime-livedata", version.ref = "runtimeLivedata" }
+androidx-compose-ui = { group = "androidx.compose.ui", name = "ui", version.ref = "ui" }
 
 
 [plugins]
