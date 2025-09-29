@@ -1,198 +1,199 @@
 package com.example.tetires.ui.screen
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController
-import com.example.tetires.ui.component.BanButton
-import com.example.tetires.ui.viewmodel.MainViewModel
-import com.example.tetires.data.model.PosisiBan
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.constraintlayout.compose.ConstraintLayout
+import androidx.navigation.NavController
+import com.example.tetires.R
+import com.example.tetires.ui.viewmodel.MainViewModel
+
+enum class PosisiBan {
+    D_KI, D_KA, B_KI, B_KA
+}
+
+enum class StatusPengecekan {
+    BelumDicek,
+    TidakAus,
+    Aus
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CekBanScreen(
     navController: NavController,
     viewModel: MainViewModel,
-    idCek: Long?
+    idCek: Long
 ) {
-    // Validasi idCek tidak null
-    if (idCek == null) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = androidx.compose.ui.Alignment.Center
-        ) {
-            Text("Error: ID Pengecekan tidak valid")
-        }
-        return
+    var statusBan by remember {
+        mutableStateOf(
+            mapOf(
+                PosisiBan.D_KI to StatusPengecekan.BelumDicek,
+                PosisiBan.D_KA to StatusPengecekan.BelumDicek,
+                PosisiBan.B_KI to StatusPengecekan.BelumDicek,
+                PosisiBan.B_KA to StatusPengecekan.BelumDicek
+            )
+        )
     }
-
-    // Local states untuk 4 posisi ban
-    var statusDki by remember { mutableStateOf<Boolean?>(null) }
-    var statusDka by remember { mutableStateOf<Boolean?>(null) }
-    var statusBki by remember { mutableStateOf<Boolean?>(null) }
-    var statusBka by remember { mutableStateOf<Boolean?>(null) }
 
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        "Cek Ban",
-                        color = MaterialTheme.colorScheme.onPrimary
+                        text = "Cek Ban",
+                        fontWeight = FontWeight.Bold
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Kembali",
-                            tint = MaterialTheme.colorScheme.onPrimary
-                        )
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
                     }
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary
-                )
+                }
             )
         }
-    ) { padding ->
+    ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .padding(16.dp)
+                .padding(paddingValues)
+                .padding(horizontal = 16.dp, vertical = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(
-                "Pilih posisi ban lalu tekan untuk toggle Aus/OK. " +
-                        "Setelah setiap toggle, data akan disimpan.",
-                style = MaterialTheme.typography.bodyMedium
+            BusLayout(
+                modifier = Modifier.weight(1f),
+                statusBan = statusBan,
+                onTireClick = { posisi ->
+                    val currentStatus = statusBan[posisi]!!
+                    val nextStatus = when (currentStatus) {
+                        StatusPengecekan.BelumDicek -> StatusPengecekan.TidakAus
+                        StatusPengecekan.TidakAus -> StatusPengecekan.Aus
+                        StatusPengecekan.Aus -> StatusPengecekan.BelumDicek
+                    }
+                    statusBan = statusBan + (posisi to nextStatus)
+
+                    // Update ke ViewModel asli
+                    viewModel.updateCheckPartial(
+                        idCek = idCek,
+                        posisi = posisi.name,
+                        ukuran = 1.5f,
+                        isAus = nextStatus == StatusPengecekan.Aus
+                    )
+                }
             )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Baris pertama: Depan
-            Text(
-                "DEPAN",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                // Depan Kiri (DKI)
-                BanButton(
-                    statusAus = statusDki,
-                    onClick = {
-                        val next = when (statusDki) {
-                            null -> false
-                            false -> true
-                            true -> null
-                        }
-                        statusDki = next
-                        val isAus = next == true
-                        viewModel.updateCheckPartial(
-                            idCek = idCek,
-                            posisi = PosisiBan.DKI.name,
-                            ukuran = 1.5f,
-                            isAus = isAus
-                        )
-                    },
-                    modifier = Modifier.weight(1f)
-                )
-
-                // Depan Kanan (DKA)
-                BanButton(
-                    statusAus = statusDka,
-                    onClick = {
-                        val next = when (statusDka) {
-                            null -> false
-                            false -> true
-                            true -> null
-                        }
-                        statusDka = next
-                        val isAus = next == true
-                        viewModel.updateCheckPartial(
-                            idCek = idCek,
-                            posisi = PosisiBan.DKA.name,
-                            ukuran = 1.5f,
-                            isAus = isAus
-                        )
-                    },
-                    modifier = Modifier.weight(1f)
-                )
-            }
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Baris kedua: Belakang
-            Text(
-                "BELAKANG",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                // Belakang Kiri (BKI)
-                BanButton(
-                    statusAus = statusBki,
-                    onClick = {
-                        val next = when (statusBki) {
-                            null -> false
-                            false -> true
-                            true -> null
-                        }
-                        statusBki = next
-                        val isAus = next == true
-                        viewModel.updateCheckPartial(
-                            idCek = idCek,
-                            posisi = PosisiBan.BKI.name,
-                            ukuran = 1.5f,
-                            isAus = isAus
-                        )
-                    },
-                    modifier = Modifier.weight(1f)
-                )
-
-                // Belakang Kanan (BKA)
-                BanButton(
-                    statusAus = statusBka,
-                    onClick = {
-                        val next = when (statusBka) {
-                            null -> false
-                            false -> true
-                            true -> null
-                        }
-                        statusBka = next
-                        val isAus = next == true
-                        viewModel.updateCheckPartial(
-                            idCek = idCek,
-                            posisi = PosisiBan.BKA.name,
-                            ukuran = 1.5f,
-                            isAus = isAus
-                        )
-                    },
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Tombol ke Detail
             Button(
-                onClick = {
-                    navController.navigate("detailPengecekan/$idCek")
-                },
-                modifier = Modifier.fillMaxWidth()
+                onClick = { navController.navigate("detailPengecekan/$idCek") },
+                modifier = Modifier.padding(bottom = 100.dp),
+                shape = RoundedCornerShape(50.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3949A3))
             ) {
-                Text("Lihat Detail Pengecekan")
+                Text("Detail Pengecekan", color = Color.White)
             }
         }
+    }
+}
+
+@Composable
+fun BusLayout(
+    modifier: Modifier = Modifier,
+    statusBan: Map<PosisiBan, StatusPengecekan>,
+    onTireClick: (PosisiBan) -> Unit
+) {
+    ConstraintLayout(modifier = modifier.fillMaxSize()) {
+        val (busImage, iconDKI, iconDKA, iconBKI, iconBKA) = createRefs()
+
+        val topGuideline = createGuidelineFromTop(0.3f)
+        val bottomGuideline = createGuidelineFromBottom(0.3f)
+        val startGuideline = createGuidelineFromStart(0.1f)
+        val endGuideline = createGuidelineFromEnd(0.1f)
+
+        Image(
+            painter = painterResource(id = R.drawable.buscekban),
+            contentDescription = "Bus",
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .fillMaxHeight(0.9f)
+                .aspectRatio(0.35f)
+                .constrainAs(busImage) {
+                    top.linkTo(parent.top)
+                    bottom.linkTo(parent.bottom)
+                    start.linkTo(parent.start)
+                    end.linkTo(parent.end)
+                }
+        )
+
+        StatusIcon(
+            modifier = Modifier.constrainAs(iconDKI) {
+                top.linkTo(topGuideline)
+                start.linkTo(startGuideline)
+            },
+            status = statusBan.getValue(PosisiBan.D_KI),
+            onClick = { onTireClick(PosisiBan.D_KI) }
+        )
+
+        StatusIcon(
+            modifier = Modifier.constrainAs(iconDKA) {
+                top.linkTo(topGuideline)
+                end.linkTo(endGuideline)
+            },
+            status = statusBan.getValue(PosisiBan.D_KA),
+            onClick = { onTireClick(PosisiBan.D_KA) }
+        )
+
+        StatusIcon(
+            modifier = Modifier.constrainAs(iconBKI) {
+                bottom.linkTo(bottomGuideline)
+                start.linkTo(startGuideline)
+            },
+            status = statusBan.getValue(PosisiBan.B_KI),
+            onClick = { onTireClick(PosisiBan.B_KI) }
+        )
+
+        StatusIcon(
+            modifier = Modifier.constrainAs(iconBKA) {
+                bottom.linkTo(bottomGuideline)
+                end.linkTo(endGuideline)
+            },
+            status = statusBan.getValue(PosisiBan.B_KA),
+            onClick = { onTireClick(PosisiBan.B_KA) }
+        )
+    }
+}
+
+@Composable
+fun StatusIcon(
+    modifier: Modifier = Modifier,
+    status: StatusPengecekan,
+    onClick: () -> Unit
+) {
+    IconButton(onClick = onClick, modifier = modifier) {
+        val (icon, color) = when (status) {
+            StatusPengecekan.BelumDicek -> Icons.Default.AddCircle to Color.Black
+            StatusPengecekan.TidakAus -> Icons.Default.CheckCircle to Color(0xFF10B981)
+            StatusPengecekan.Aus -> Icons.Default.Cancel to Color(0xFFEF4444)
+        }
+        Icon(
+            imageVector = icon,
+            contentDescription = "Status Ban",
+            tint = color,
+            modifier = Modifier.size(40.dp)
+        )
     }
 }

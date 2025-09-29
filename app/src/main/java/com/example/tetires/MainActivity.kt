@@ -15,12 +15,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.tetires.data.local.database.AppDatabase
 import com.example.tetires.data.repository.TetiresRepository
-import com.example.tetires.ui.screen.BerandaScreen
-import com.example.tetires.ui.screen.CekBanScreen
-import com.example.tetires.ui.screen.DaftarBusScreen
-import com.example.tetires.ui.screen.DetailPengecekanScreen
-import com.example.tetires.ui.screen.RiwayatScreen
-import com.example.tetires.ui.screen.TambahBusScreen
+import com.example.tetires.ui.screen.*
 import com.example.tetires.ui.theme.TETIRESTheme
 import com.example.tetires.ui.viewmodel.MainViewModel
 import com.example.tetires.ui.viewmodel.MainViewModelFactory
@@ -29,10 +24,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // 🔹 Inisialisasi Database
         val database = AppDatabase.getInstance(this)
-
-        // 🔹 Buat repository dengan DAO dari database
         val repository = TetiresRepository(
             busDao = database.busDao(),
             pengecekanDao = database.pengecekanDao(),
@@ -46,13 +38,10 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val navController = rememberNavController()
-
-                    // 🔹 Buat ViewModel dengan Factory
                     val mainViewModel: MainViewModel = viewModel(
                         factory = MainViewModelFactory(repository)
                     )
 
-                    // 🔹 Navigation Graph
                     NavHost(
                         navController = navController,
                         startDestination = "beranda"
@@ -69,7 +58,7 @@ class MainActivity : ComponentActivity() {
                         composable("riwayat/{busId}",
                             arguments = listOf(navArgument("busId") { type = NavType.LongType })
                         ) { backStackEntry ->
-                            val busId = backStackEntry.arguments?.getLong("busId")
+                            val busId = backStackEntry.arguments?.getLong("busId") ?: 0L
                             RiwayatScreen(navController, mainViewModel, busId)
                         }
                         composable("detailPengecekan/{idCek}",
@@ -82,13 +71,11 @@ class MainActivity : ComponentActivity() {
                             route = "cekBan/{idCek}",
                             arguments = listOf(navArgument("idCek") { type = NavType.LongType })
                         ) { backStackEntry ->
-                            val idCek = backStackEntry.arguments?.getLong("idCek")
+                            val idCek = backStackEntry.arguments?.getLong("idCek") ?: 0L
                             CekBanScreen(navController, mainViewModel, idCek)
                         }
                     }
-
                 }
-
             }
         }
     }
