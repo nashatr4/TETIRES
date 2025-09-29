@@ -16,6 +16,7 @@ import androidx.navigation.navArgument
 import com.example.tetires.data.local.database.AppDatabase
 import com.example.tetires.data.repository.TetiresRepository
 import com.example.tetires.ui.screen.BerandaScreen
+import com.example.tetires.ui.screen.CekBanScreen
 import com.example.tetires.ui.screen.DaftarBusScreen
 import com.example.tetires.ui.screen.DetailPengecekanScreen
 import com.example.tetires.ui.screen.RiwayatScreen
@@ -56,70 +57,38 @@ class MainActivity : ComponentActivity() {
                         navController = navController,
                         startDestination = "beranda"
                     ) {
-                        // Halaman Beranda
                         composable("beranda") {
-                            BerandaScreen(
-                                navController = navController,
-                                viewModel = mainViewModel
-                            )
+                            BerandaScreen(navController, mainViewModel)
                         }
-
-                        // Halaman Daftar Bus
                         composable("list_bus") {
-                            DaftarBusScreen(
-                                navController = navController,
-                                viewModel = mainViewModel
-                            )
+                            DaftarBusScreen(navController, mainViewModel)
                         }
-
-                        // Halaman Tambah Bus
                         composable("tambah_bus") {
-                            TambahBusScreen(
-                                navController = navController,
-                                viewModel = mainViewModel
-                            )
+                            TambahBusScreen(navController, mainViewModel)
                         }
-
-
-                        // Halaman Riwayat (dengan parameter busId)
-                        composable(
-                            route = "riwayat/{busId}",
-                            arguments = listOf(
-                                navArgument("busId") { type = NavType.LongType }
-                            )
+                        composable("riwayat/{busId}",
+                            arguments = listOf(navArgument("busId") { type = NavType.LongType })
                         ) { backStackEntry ->
                             val busId = backStackEntry.arguments?.getLong("busId")
-                            RiwayatScreen(
-                                navController = navController,
-                                viewModel = mainViewModel,
-                                busId = busId
-                            )
-                            composable("detail_check/{idCek}") { backStackEntry ->
-                                val idCek = backStackEntry.arguments?.getString("idCek")?.toLongOrNull()
-                                if (idCek != null) {
-                                    DetailPengecekanScreen(
-                                        navController = navController,
-                                        viewModel = mainViewModel,
-                                        idCek = idCek
-                                    )
-                                }
-                            }
-
+                            RiwayatScreen(navController, mainViewModel, busId)
                         }
-
-                        composable(route = "menambah_bus") {
-                            MenambahBus(navController = navController)
+                        composable("detailPengecekan/{idCek}",
+                            arguments = listOf(navArgument("idCek") { type = NavType.LongType })
+                        ) { backStackEntry ->
+                            val idCek = backStackEntry.arguments?.getLong("idCek") ?: 0L
+                            DetailPengecekanScreen(navController, mainViewModel, idCek)
                         }
-
-                        composable(route = "cek_ban/{cekId}") { backStackEntry ->
-                            CekBan(navController = navController)
-                        }
-
-                        composable(route = "detail_pengecekan/{detailId") { backStackEntry ->
-                            DetailPengecekan(navController = navController)
+                        composable(
+                            route = "cekBan/{idCek}",
+                            arguments = listOf(navArgument("idCek") { type = NavType.LongType })
+                        ) { backStackEntry ->
+                            val idCek = backStackEntry.arguments?.getLong("idCek")
+                            CekBanScreen(navController, mainViewModel, idCek)
                         }
                     }
+
                 }
+
             }
         }
     }

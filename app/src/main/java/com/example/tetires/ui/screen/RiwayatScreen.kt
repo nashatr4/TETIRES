@@ -13,24 +13,25 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.*
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.example.tetires.R
+import com.example.tetires.data.local.entity.Bus
 import com.example.tetires.data.model.PengecekanRingkas
 import com.example.tetires.ui.viewmodel.MainViewModel
 
+// ========================== SCREEN ==========================
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RiwayatScreen(
@@ -38,9 +39,16 @@ fun RiwayatScreen(
     viewModel: MainViewModel,
     busId: Long?
 ) {
-    // Load data terakhir
-    viewModel.loadLast10Checks(busId)
-    val items = viewModel.currentBusChecks.collectAsState().value
+    // Ambil data bus dan pengecekan
+    val busData by produceState<Bus?>(initialValue = null, busId) {
+        value = busId?.let { viewModel.getBusById(it) }
+    }
+
+    LaunchedEffect(busId) {
+        viewModel.loadLast10Checks(busId)
+    }
+
+    val items by viewModel.currentBusChecks.collectAsState()
 
     Scaffold(
         topBar = {
@@ -63,21 +71,34 @@ fun RiwayatScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .background(Color(0xFFFFFFFF))
+                .background(Color.White)
         ) {
-            // Header Deskripsi Bus
-            HeaderDeskripsiBus()
-
+            HeaderDeskripsiBus(
+                busData = busData,
+                onCekBanClick = {
+                    busId?.let { viewModel.startCheck(it) }
+                }
+            )
             Spacer(modifier = Modifier.height(12.dp))
+            RiwayatSection(items, navController, viewModel, busId)
+        }
+    }
 
-            // Section Riwayat
-            RiwayatSection(items)
+    // Observer untuk navigasi ke cek ban
+    val startCheckEvent by viewModel.startCheckEvent.observeAsState()
+    LaunchedEffect(startCheckEvent) {
+        startCheckEvent?.getContentIfNotHandled()?.let { checkId ->
+            navController.navigate("cekBan/$checkId")
         }
     }
 }
 
+// ========================== HEADER ==========================
 @Composable
-fun HeaderDeskripsiBus() {
+fun HeaderDeskripsiBus(
+    busData: Bus?,
+    onCekBanClick: () -> Unit
+) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -93,13 +114,13 @@ fun HeaderDeskripsiBus() {
                 modifier = Modifier.weight(1f)
             ) {
                 Text(
-                    text = "Sinar Jaya", // TODO: bind ke namaBus
+                    text = busData?.namaBus ?: "Loading...",
                     color = Color.Black,
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "AB 8874 GH", // TODO: bind ke platNomor
+                    text = busData?.platNomor ?: "-",
                     color = Color.Black,
                     fontSize = 18.sp
                 )
@@ -118,7 +139,7 @@ fun HeaderDeskripsiBus() {
                 )
                 Spacer(modifier = Modifier.height(5.dp))
                 Button(
-                    onClick = { /* TODO: Navigasi ke cek ban */ },
+                    onClick = onCekBanClick,
                     shape = RoundedCornerShape(50.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3949A3)),
                     contentPadding = PaddingValues(horizontal = 60.dp, vertical = 3.dp)
@@ -130,53 +151,17 @@ fun HeaderDeskripsiBus() {
     }
 }
 
+// ========================== LIST ITEM ==========================
 @Composable
-fun RiwayatSection(list: List<PengecekanRingkas>) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
-            .background(Color.White)
-            .padding(horizontal = 16.dp)
-    ) {
-        Text("Riwayat Pemeriksaan", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-        Spacer(modifier = Modifier.height(8.dp))
+fun RiwayatListItem(
+    item: PengecekanRingkas,
+    navController: NavController,
+    viewModel: MainViewModel,
+    busId: Long?
+) {
+    var expanded by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
-        // Header tabel
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("Tanggal", modifier = Modifier.width(125.dp), textAlign = TextAlign.Left)
-            Spacer(modifier = Modifier.width(13.dp))
-            Box(modifier = Modifier.width(36.dp), contentAlignment = Alignment.Center) {
-                Text("D-KI")
-            }
-            Box(modifier = Modifier.width(36.dp), contentAlignment = Alignment.Center) {
-                Text("D-KA")
-            }
-            Box(modifier = Modifier.width(36.dp), contentAlignment = Alignment.Center) {
-                Text("B-KI")
-            }
-            Box(modifier = Modifier.width(36.dp), contentAlignment = Alignment.Center) {
-                Text("B-KA")
-            }
-        }
-
-        Spacer(modifier = Modifier.height(5.dp))
-
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            items(list) { item ->
-                RiwayatListItem(item)
-            }
-        }
-    }
-}
-
-@Composable
-fun RiwayatListItem(item: PengecekanRingkas) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(50),
@@ -185,12 +170,17 @@ fun RiwayatListItem(item: PengecekanRingkas) {
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(item.tanggalReadable, modifier = Modifier.weight(1f), fontWeight = FontWeight.Medium)
+            Text(
+                item.tanggalReadable,
+                modifier = Modifier.weight(1f),
+                fontWeight = FontWeight.Medium,
+                fontSize = 12.sp
+            )
 
-            Divider(
+            HorizontalDivider(
                 modifier = Modifier
                     .height(50.dp)
                     .width(1.dp),
@@ -204,19 +194,107 @@ fun RiwayatListItem(item: PengecekanRingkas) {
             StatusDot(item.statusBki == true)
             StatusDot(item.statusBka == true)
 
-            IconButton(onClick = { /* TODO: detail cek */ }) {
-                Icon(Icons.Default.MoreVert, contentDescription = "Opsi")
+            Box {
+                IconButton(onClick = { expanded = true }) {
+                    Icon(Icons.Default.MoreVert, contentDescription = "Opsi")
+                }
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Lihat Detail") },
+                        onClick = {
+                            expanded = false
+                            navController.navigate("detailPengecekan/${item.idCek}")
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Edit") },
+                        onClick = {
+                            expanded = false
+                            navController.navigate("cekBan/${item.idCek}")
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Delete") },
+                        onClick = {
+                            expanded = false
+                            showDeleteDialog = true
+                        }
+                    )
+                }
+            }
+        }
+    }
+
+    // Dialog konfirmasi hapus
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Konfirmasi Hapus") },
+            text = { Text("Apakah Anda yakin ingin menghapus pengecekan ini?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteDialog = false
+                        busId?.let { viewModel.deletePengecekan(item.idCek, it) }
+                    }
+                ) {
+                    Text("Hapus")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Batal")
+                }
+            }
+        )
+    }
+}
+
+// ========================== SECTION ==========================
+@Composable
+fun RiwayatSection(
+    items: List<PengecekanRingkas>,
+    navController: NavController,
+    viewModel: MainViewModel,
+    busId: Long?
+) {
+    if (items.isEmpty()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(32.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "Belum ada riwayat pengecekan",
+                color = Color.Gray,
+                fontSize = 14.sp
+            )
+        }
+    } else {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+        ) {
+            items(items) { item ->
+                RiwayatListItem(item, navController, viewModel, busId)
+                Spacer(modifier = Modifier.height(8.dp))
             }
         }
     }
 }
 
+// ========================== DOT ==========================
 @Composable
 fun StatusDot(isAus: Boolean) {
     val color = if (isAus) Color(0xFFEF4444) else Color(0xFF10B981)
     Box(
         modifier = Modifier
-            .padding(horizontal = 8.dp)
+            .padding(horizontal = 4.dp)
             .size(20.dp)
             .clip(CircleShape)
             .background(color)
@@ -224,6 +302,7 @@ fun StatusDot(isAus: Boolean) {
     )
 }
 
+// ========================== PREVIEW ==========================
 @OptIn(ExperimentalMaterial3Api::class)
 @Preview(showBackground = true)
 @Composable
@@ -255,6 +334,9 @@ fun PreviewRiwayatScreen() {
         )
     )
 
+    val navController = rememberNavController()
+    val dummyBus = Bus(namaBus = "Sinar Jaya", platNomor = "AB 8874 GH")
+
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
@@ -277,9 +359,50 @@ fun PreviewRiwayatScreen() {
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            HeaderDeskripsiBus()
+            HeaderDeskripsiBus(busData = dummyBus, onCekBanClick = {})
             Spacer(modifier = Modifier.height(12.dp))
-            RiwayatSection(dummyList)
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+            ) {
+                items(dummyList) { item ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(50),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFAFD3E2)),
+                        border = BorderStroke(1.dp, Color.Black),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                item.tanggalReadable,
+                                modifier = Modifier.weight(1f),
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 12.sp
+                            )
+                            HorizontalDivider(
+                                modifier = Modifier
+                                    .height(50.dp)
+                                    .width(1.dp),
+                                color = Color.LightGray
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            StatusDot(item.statusDki == true)
+                            StatusDot(item.statusDka == true)
+                            StatusDot(item.statusBki == true)
+                            StatusDot(item.statusBka == true)
+                            IconButton(onClick = { }) {
+                                Icon(Icons.Default.MoreVert, contentDescription = "Opsi")
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
         }
     }
 }

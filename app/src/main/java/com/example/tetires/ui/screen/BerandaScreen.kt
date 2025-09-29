@@ -3,9 +3,9 @@ package com.example.tetires.ui.screen
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -34,6 +34,7 @@ private val ColorGreen = Color(0xFF0D5900)
 private val ColorGray = Color(0xFFE0E0E0)
 private val ColorDarkText = Color(0xFF333333)
 
+// --- BerandaScreen ---
 @Composable
 fun BerandaScreen(navController: NavController, viewModel: MainViewModel) {
     val logs by viewModel.recentLogs.collectAsState()
@@ -64,9 +65,7 @@ fun BerandaScreen(navController: NavController, viewModel: MainViewModel) {
                 .fillMaxSize()
                 .background(ColorLightBlue)
         ) {
-            item {
-                HeroBanner(navController)
-            }
+            item { HeroBanner(navController) }
 
             item {
                 SearchAndFilterSection(
@@ -81,12 +80,13 @@ fun BerandaScreen(navController: NavController, viewModel: MainViewModel) {
             }
 
             item {
-                HistorySection(filteredLogs)
+                HistorySection(filteredLogs, navController)
             }
         }
     }
 }
 
+// --- Top Bar ---
 @Composable
 fun TopAppBar() {
     Row(
@@ -111,9 +111,10 @@ fun TopAppBar() {
         )
     }
 }
-// Hero Section
+
+// --- Hero Banner ---
 @Composable
-fun HeroBanner (navController: NavController) {
+fun HeroBanner(navController: NavController) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -146,7 +147,7 @@ fun HeroBanner (navController: NavController) {
                 Button(
                     onClick = { navController.navigate("list_bus") },
                     shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3949A3)),
+                    colors = ButtonDefaults.buttonColors(containerColor = ColorNavy),
                     modifier = Modifier.height(32.dp),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp)
                 ) {
@@ -157,6 +158,7 @@ fun HeroBanner (navController: NavController) {
     }
 }
 
+// --- Search & Filter ---
 @Composable
 fun SearchAndFilterSection(
     searchQuery: String,
@@ -174,9 +176,7 @@ fun SearchAndFilterSection(
         Box(modifier = Modifier.weight(1f)) {
             SearchBar(
                 hint = "Search cepat...",
-                onQueryChanged = { query ->
-                    onSearchChange(query)
-                }
+                onQueryChanged = { query -> onSearchChange(query) }
             )
         }
         FilterDropdown(
@@ -225,27 +225,29 @@ fun FilterDropdown(
         }
     }
 }
+
+// --- History Section ---
 @Composable
-fun HistorySection(logs: List<LogItem>) {
+fun HistorySection(logs: List<LogItem>, navController: NavController) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(ColorLightBlue),
-        horizontalAlignment = Alignment.CenterHorizontally // biar table di tengah
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        HistoryTable(logs)
+        HistoryTable(logs, navController)
     }
 }
 
 @Composable
-fun HistoryTable(logs: List<LogItem>) {
-    Column () {
+fun HistoryTable(logs: List<LogItem>, navController: NavController) {
+    Column {
         Row(
             modifier = Modifier
-                .background(Color(0xFF3949A3), shape = RoundedCornerShape(8.dp))
+                .fillMaxWidth()
+                .background(ColorNavy, shape = RoundedCornerShape(8.dp))
                 .padding(vertical = 12.dp, horizontal = 12.dp)
         ) {
-
             Text(
                 text = "Tanggal",
                 modifier = Modifier.weight(1f),
@@ -278,29 +280,26 @@ fun HistoryTable(logs: List<LogItem>) {
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center
             )
-
         }
 
-        // Rows
         logs.forEach { log ->
-            HistoryRow(item = log)
+            HistoryRow(item = log, navController = navController)
         }
-
-
     }
 }
 
-
 @Composable
-fun HistoryRow(item: LogItem) {
+fun HistoryRow(item: LogItem, navController: NavController) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(ColorLightBlue)
-            .padding( vertical = 4.dp)
+            .padding(vertical = 4.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(Color.White)
             .border(1.dp, ColorGray, RoundedCornerShape(8.dp))
+            .clickable {
+                navController.navigate("detailPengecekan/${item.idCek}")
+            }
             .padding(horizontal = 12.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -337,6 +336,8 @@ fun HistoryRow(item: LogItem) {
     }
 }
 
+
+// --- Preview ---
 @Preview(showBackground = true, device = "spec:width=411dp,height=891dp")
 @Composable
 fun BerandaScreenPreview() {
@@ -345,32 +346,12 @@ fun BerandaScreenPreview() {
 
 @Composable
 private fun BerandaPreviewContent() {
-    // Dummy data untuk preview
+    val previewNav = rememberNavController()
+
     val dummyLogs = listOf(
-        LogItem(
-            idCek = 1L,
-            tanggalCek = System.currentTimeMillis(),
-            tanggalReadable = "23 April 2025",
-            namaBus = "Sinar Jaya",
-            platNomor = "AB 1234 GH",
-            summaryStatus = "Aus"
-        ),
-        LogItem(
-            idCek = 2L,
-            tanggalCek = System.currentTimeMillis(),
-            tanggalReadable = "24 April 2025",
-            namaBus = "Rosalia Indah",
-            platNomor = "CD 5678 IJ",
-            summaryStatus = "Normal"
-        ),
-        LogItem(
-            idCek = 3L,
-            tanggalCek = System.currentTimeMillis(),
-            tanggalReadable = "25 April 2025",
-            namaBus = "Haryanto",
-            platNomor = "EF 9012 KL",
-            summaryStatus = "Aus"
-        )
+        LogItem(1L, System.currentTimeMillis(), "23 April 2025", "Sinar Jaya", "AB 1234 GH", "Aus"),
+        LogItem(2L, System.currentTimeMillis(), "24 April 2025", "Rosalia Indah", "CD 5678 IJ", "Normal"),
+        LogItem(3L, System.currentTimeMillis(), "25 April 2025", "Haryanto", "EF 9012 KL", "Aus")
     )
 
     var searchQuery by remember { mutableStateOf("") }
@@ -400,9 +381,7 @@ private fun BerandaPreviewContent() {
                 .fillMaxSize()
                 .background(ColorLightBlue)
         ) {
-            item {
-                HeroBanner(rememberNavController())
-            }
+            item { HeroBanner(previewNav) }
 
             item {
                 SearchAndFilterSection(
@@ -414,7 +393,7 @@ private fun BerandaPreviewContent() {
             }
 
             item {
-                HistorySection(filteredLogs)
+                HistorySection(filteredLogs, previewNav)
             }
         }
     }

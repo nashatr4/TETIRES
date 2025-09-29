@@ -9,6 +9,9 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface PengecekanDao {
 
+    @Query("DELETE FROM pengecekan WHERE idPengecekan = :id")
+    suspend fun deletePengecekanById(id: Long)
+
     // Insert pengecekan baru
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPengecekan(pengecekan: Pengecekan): Long

@@ -1,19 +1,8 @@
 package com.example.tetires.ui.screen
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.Button
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -22,13 +11,26 @@ import com.example.tetires.ui.viewmodel.MainViewModel
 import com.example.tetires.data.model.PosisiBan
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme // Perbaikan: Menambahkan impor untuk MaterialTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CekBanScreen(navController: NavController, viewModel: MainViewModel, idCek: Long) {
-    // local states for four positions
+fun CekBanScreen(
+    navController: NavController,
+    viewModel: MainViewModel,
+    idCek: Long?
+) {
+    // Validasi idCek tidak null
+    if (idCek == null) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = androidx.compose.ui.Alignment.Center
+        ) {
+            Text("Error: ID Pengecekan tidak valid")
+        }
+        return
+    }
+
+    // Local states untuk 4 posisi ban
     var statusDki by remember { mutableStateOf<Boolean?>(null) }
     var statusDka by remember { mutableStateOf<Boolean?>(null) }
     var statusBki by remember { mutableStateOf<Boolean?>(null) }
@@ -37,71 +39,159 @@ fun CekBanScreen(navController: NavController, viewModel: MainViewModel, idCek: 
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Cek Ban", color = MaterialTheme.colorScheme.onPrimary) }, // Perbaikan: Menggunakan skema warna yang sesuai
+                title = {
+                    Text(
+                        "Cek Ban",
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Kembali",
-                            tint = MaterialTheme.colorScheme.onPrimary // Perbaikan: Menggunakan skema warna yang sesuai
+                            tint = MaterialTheme.colorScheme.onPrimary
                         )
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary // Perbaikan: Menggunakan skema warna yang sesuai
+                    containerColor = MaterialTheme.colorScheme.primary
                 )
             )
         }
     ) { padding ->
-        Column(modifier = Modifier
-            .fillMaxSize()
-            .padding(padding)
-            .padding(16.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(16.dp)
+        ) {
+            Text(
+                "Pilih posisi ban lalu tekan untuk toggle Aus/OK. " +
+                        "Setelah setiap toggle, data akan disimpan.",
+                style = MaterialTheme.typography.bodyMedium
+            )
 
-            Text("Pilih posisi ban lalu tekan untuk toggle Aus/OK. Setelah setiap toggle, data akan disimpan.")
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                BanButton(statusAus = statusDki, onClick = {
-                    val next = when (statusDki) { null -> false; false -> true; true -> null }
-                    statusDki = next
-                    // Perbaikan: Menggunakan .name untuk mengambil string dari enum PosisiBan
-                    // Juga, perbaiki logika untuk `isAus`
-                    val isAus = next == true
-                    viewModel.updateCheckPartial(idCek, PosisiBan.DKI.name, 1.5f, isAus)
-                })
-                BanButton(statusAus = statusDka, onClick = {
-                    val next = when (statusDka) { null -> false; false -> true; true -> null }
-                    statusDka = next
-                    val isAus = next == true
-                    viewModel.updateCheckPartial(idCek, PosisiBan.DKA.name, 1.5f, isAus)
-                })
-            }
+            // Baris pertama: Depan
+            Text(
+                "DEPAN",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                // Depan Kiri (DKI)
+                BanButton(
+                    statusAus = statusDki,
+                    onClick = {
+                        val next = when (statusDki) {
+                            null -> false
+                            false -> true
+                            true -> null
+                        }
+                        statusDki = next
+                        val isAus = next == true
+                        viewModel.updateCheckPartial(
+                            idCek = idCek,
+                            posisi = PosisiBan.DKI.name,
+                            ukuran = 1.5f,
+                            isAus = isAus
+                        )
+                    },
+                    modifier = Modifier.weight(1f)
+                )
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                BanButton(statusAus = statusBki, onClick = {
-                    val next = when (statusBki) { null -> false; false -> true; true -> null }
-                    statusBki = next
-                    val isAus = next == true
-                    viewModel.updateCheckPartial(idCek, PosisiBan.BKI.name, 1.5f, isAus)
-                })
-                BanButton(statusAus = statusBka, onClick = {
-                    val next = when (statusBka) { null -> false; false -> true; true -> null }
-                    statusBka = next
-                    val isAus = next == true
-                    viewModel.updateCheckPartial(idCek, PosisiBan.BKA.name, 1.5f, isAus)
-                })
+                // Depan Kanan (DKA)
+                BanButton(
+                    statusAus = statusDka,
+                    onClick = {
+                        val next = when (statusDka) {
+                            null -> false
+                            false -> true
+                            true -> null
+                        }
+                        statusDka = next
+                        val isAus = next == true
+                        viewModel.updateCheckPartial(
+                            idCek = idCek,
+                            posisi = PosisiBan.DKA.name,
+                            ukuran = 1.5f,
+                            isAus = isAus
+                        )
+                    },
+                    modifier = Modifier.weight(1f)
+                )
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            Button(onClick = {
-                // TODO: Panggil fungsi untuk menyelesaikan pengecekan ban di ViewModel jika semua ban sudah diperiksa
-                navController.navigate("detail/$idCek")
-            }, modifier = Modifier.fillMaxWidth()) {
-                Text("Detail Pengecekan")
+            // Baris kedua: Belakang
+            Text(
+                "BELAKANG",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                // Belakang Kiri (BKI)
+                BanButton(
+                    statusAus = statusBki,
+                    onClick = {
+                        val next = when (statusBki) {
+                            null -> false
+                            false -> true
+                            true -> null
+                        }
+                        statusBki = next
+                        val isAus = next == true
+                        viewModel.updateCheckPartial(
+                            idCek = idCek,
+                            posisi = PosisiBan.BKI.name,
+                            ukuran = 1.5f,
+                            isAus = isAus
+                        )
+                    },
+                    modifier = Modifier.weight(1f)
+                )
+
+                // Belakang Kanan (BKA)
+                BanButton(
+                    statusAus = statusBka,
+                    onClick = {
+                        val next = when (statusBka) {
+                            null -> false
+                            false -> true
+                            true -> null
+                        }
+                        statusBka = next
+                        val isAus = next == true
+                        viewModel.updateCheckPartial(
+                            idCek = idCek,
+                            posisi = PosisiBan.BKA.name,
+                            ukuran = 1.5f,
+                            isAus = isAus
+                        )
+                    },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Tombol ke Detail
+            Button(
+                onClick = {
+                    navController.navigate("detailPengecekan/$idCek")
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Lihat Detail Pengecekan")
             }
         }
     }
