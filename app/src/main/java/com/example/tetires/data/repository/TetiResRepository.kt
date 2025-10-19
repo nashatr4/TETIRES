@@ -103,9 +103,10 @@ class TetiresRepository(
         return UpdateResult(complete = isComplete, idCek = idPengecekan)
     }
 
+
     fun getLast10Checks(busId: Long): Flow<List<PengecekanRingkas>> {
-        return pengecekanDao.getPengecekanByBus(busId).map { checksWithBus ->
-            checksWithBus.take(10).map { item ->
+        return pengecekanDao.getLast10Checks(busId).map { checksWithBus ->
+            checksWithBus.map { item ->
                 val isComplete = listOf(
                     item.statusDka, item.statusDki,
                     item.statusBka, item.statusBki
@@ -127,6 +128,7 @@ class TetiresRepository(
             }
         }
     }
+
 
     suspend fun getCheckDetail(idCek: Long): CheckDetail? {
         val check = pengecekanDao.getPengecekanById(idCek) ?: return null
@@ -165,19 +167,73 @@ class TetiresRepository(
         }
     }
 
+
+
     // ========== LOG ==========
     fun searchLogs(query: LogQuery): Flow<List<LogItem>> {
-        return pengecekanDao.getAllWithBus().map { list ->
-            list.filter { item ->
-                val matchQuery = query.searchQuery?.let {
-                    item.namaBus.contains(it, ignoreCase = true) ||
-                            item.platNomor.contains(it, ignoreCase = true)
-                } ?: true
+        return pengecekanDao.getLast10ChecksAllBus().map { list ->
+        list.filter { item ->
+                val qRaw = query.searchQuery?.trim()
+                if (qRaw == null) return@filter true
 
-                val matchDate = (query.startDate?.let { item.tanggalMs >= it } ?: true) &&
-                        (query.endDate?.let { item.tanggalMs <= it } ?: true)
+                val q = qRaw.lowercase()
 
-                matchQuery && matchDate
+                // readable date string (mis. "13 Okt 2025") untuk pengecekan tanggal
+                val readable = DateUtils.formatDate(item.tanggalMs).lowercase()
+
+                // ------ 1) DETEKSI STATUS (intent match, bukan substring) ------
+                val statusText = if (
+                    item.statusDka == true || item.statusDki == true ||
+                    item.statusBka == true || item.statusBki == true
+                ) "aus" else "tidak aus"
+
+                val statusMatch = when (q) {
+                    "aus", "a u s" -> statusText == "aus"
+                    "tidak aus", "tidak", "tidakaus", "tidak_a u s" -> statusText == "tidak aus"
+                    else -> false // jika query bukan intent status, jangan gunakan substring matching
+                }
+
+                // ------ 2) DETEKSI TANGGAL ------
+                // day number (e.g. "13")
+                val dayMatch = q.matches(Regex("^\\d{1,2}\$")) && readable.contains(q)
+
+                // year (e.g. "2025")
+                val yearMatch = q.matches(Regex("^\\d{4}\$")) && readable.contains(q)
+
+                // month names (ID) full & short
+                val monthsFull = listOf(
+                    "januari","februari","maret","april","mei","juni",
+                    "juli","agustus","september","oktober","november","desember"
+                )
+                val monthsShort = listOf(
+                    "jan","feb","mar","apr","mei","jun","jul","agu","sep","okt","nov","des"
+                )
+
+                val monthQueryFound = monthsFull.any { it in q } || monthsShort.any { it in q }
+                val monthInReadable = monthsShort.any { it in readable } || monthsFull.any { it in readable }
+
+                val monthMatch = monthQueryFound && monthInReadable
+
+                // direct readable contains (contoh: user ketik "19 okt 2025" atau "13 okt")
+                val readableContains = readable.contains(q)
+
+                val dateMatch = dayMatch || yearMatch || monthMatch || readableContains
+
+                // ------ 3) MATCH NAMA BUS / PLAT + fallback status (if not handled above) ------
+                val namaMatch = item.namaBus.contains(q, ignoreCase = true)
+                val platMatch = item.platNomor.contains(q, ignoreCase = true)
+
+                // Jika query merupakan intent status -> pakai statusMatch
+                // Jika bukan intent status, kita akan match tanggal/nama/plat OR (as fallback) status substring only if user explicitly typed words beyond exact intent
+                val matchQuery = when {
+                    statusMatch -> true
+                    else -> namaMatch || platMatch || dateMatch ||
+                            // tambahan: jika user mengetik kata "aus" tapi tidak tepat, kita cek juga full word boundary:
+                            // (mis. user mengetik "aus" tapi statusText == "tidak aus" -> tidak akan match karena statusMatch=false)
+                            false
+                }
+
+                matchQuery
             }.map { item ->
                 val summaryStatus = if (
                     item.statusDka == true || item.statusDki == true ||
