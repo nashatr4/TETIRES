@@ -268,7 +268,7 @@ fun FilterDropdown(
             expanded = expanded,
             onDismissRequest = { expanded = false }
         ) {
-            listOf("Tanggal", "Perusahaan Bus", "Plat Nomor", "Status").forEach { filter ->
+            listOf("Tanggal", "PO Bus", "Plat Nomor", "Status").forEach { filter ->
                 DropdownMenuItem(
                     text = { Text(filter) },
                     onClick = {
@@ -325,28 +325,28 @@ fun HistoryTable(logs: List<LogItem>, navController: NavController) {
                 text = "Tanggal",
                 modifier = Modifier.weight(1.3f),
                 color = Color.White,
-                fontSize = 12.sp,
+                fontSize = 14.sp,
                 textAlign = TextAlign.Center
             )
             Text(
-                text = "Perusahaan Bus",
+                text = "PO Bus",
                 modifier = Modifier.weight(1.3f),
                 color = Color.White,
-                fontSize = 12.sp,
+                fontSize = 14.sp,
                 textAlign = TextAlign.Center
             )
             Text(
                 text = "Plat Nomor",
                 modifier = Modifier.weight(1.4f),
                 color = Color.White,
-                fontSize = 12.sp,
+                fontSize = 14.sp,
                 textAlign = TextAlign.Center
             )
             Text(
                 text = "Status",
                 modifier = Modifier.weight(0.6f),
                 color = Color.White,
-                fontSize = 12.sp,
+                fontSize = 14.sp,
                 textAlign = TextAlign.Center
             )
         }
@@ -383,21 +383,21 @@ fun HistoryRow(item: LogItem, navController: NavController) {
             Text(
                 text = item.tanggalReadable,
                 modifier = Modifier.weight(1.5f),
-                fontSize = 10.sp,
+                fontSize = 14.sp,
                 textAlign = TextAlign.Center,
                 color = Color.Black
             )
             Text(
                 text = item.namaBus,
                 modifier = Modifier.weight(1.5f),
-                fontSize = 11.sp,
+                fontSize = 14.sp,
                 textAlign = TextAlign.Center,
                 color = Color.Black
             )
             Text(
                 text = item.platNomor,
                 modifier = Modifier.weight(1.5f),
-                fontSize = 12.sp,
+                fontSize = 14.sp,
                 textAlign = TextAlign.Center,
                 fontWeight = FontWeight.SemiBold,
                 color = Color.Black
@@ -405,7 +405,7 @@ fun HistoryRow(item: LogItem, navController: NavController) {
             Text(
                 text = item.summaryStatus,
                 modifier = Modifier.weight(0.8f),
-                fontSize = 11.sp,
+                fontSize = 14.sp,
                 textAlign = TextAlign.Center,
                 color = if (item.summaryStatus == "Aus") ColorRed else ColorGreen,
                 fontWeight = FontWeight.Bold
@@ -431,9 +431,9 @@ private fun BerandaPreviewContent() {
     val previewNav = rememberNavController()
 
     val dummyLogs = listOf(
-        LogItem(1L, System.currentTimeMillis(), "23 April 2025", "Sinar Jaya", "AB 1234 GH", "Aus"),
-        LogItem(2L, System.currentTimeMillis(), "24 April 2025", "Rosalia Indah", "CD 5678 IJ", "Normal"),
-        LogItem(3L, System.currentTimeMillis(), "25 April 2025", "Haryanto", "EF 9012 KL", "Aus")
+        LogItem(1L, System.currentTimeMillis(), "23 April 2025", "22.12", "Sinar Jaya", "AB 1234 GH", "Aus"),
+        LogItem(2L, System.currentTimeMillis(), "24 April 2025", "22.12", "Rosalia Indah", "CD 5678 IJ", "Normal"),
+        LogItem(3L, System.currentTimeMillis(), "25 April 2025", "22.12", "Haryanto", "EF 9012 KL", "Aus")
     )
 
     var searchQuery by remember { mutableStateOf("") }
@@ -444,7 +444,7 @@ private fun BerandaPreviewContent() {
             when (filterBy) {
                 "Tanggal" -> log.tanggalReadable.contains(searchQuery, ignoreCase = true)
                 "Plat Nomor" -> log.platNomor.contains(searchQuery, ignoreCase = true)
-                "Perusahaan Bus" -> log.namaBus.contains(searchQuery, ignoreCase = true)
+                "PO Bus" -> log.namaBus.contains(searchQuery, ignoreCase = true)
                 "Status" -> log.summaryStatus.contains(searchQuery, ignoreCase = true)
                 else -> true
             }

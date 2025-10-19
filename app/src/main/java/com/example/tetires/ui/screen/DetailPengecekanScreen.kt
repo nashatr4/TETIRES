@@ -52,7 +52,7 @@ fun DetailPengecekanScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .padding(16.dp)
+                    .padding(20.dp)
             )
         } ?: run {
             Box(
@@ -76,6 +76,13 @@ fun DetailPengecekanContent(detail: CheckDetail, modifier: Modifier = Modifier) 
         ) {
             Text("Tanggal pemeriksaan", color = Color.Black, fontSize = 16.sp)
             Text(detail.tanggalReadable, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text("Waktu pemeriksaan", color = Color.Black, fontSize = 16.sp)
+            Text(detail.waktuReadable, fontWeight = FontWeight.Bold, fontSize = 16.sp)
         }
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -184,6 +191,7 @@ fun PreviewDetailPengecekanScreen() {
         idCek = 1L,
         tanggalCek = 1714492800000L,
         tanggalReadable = "30 April 2024",
+        waktuReadable = "12.32",
         namaBus = "Bus Pariwisata",
         platNomor = "AB 1234 CD",
         statusDka = false,

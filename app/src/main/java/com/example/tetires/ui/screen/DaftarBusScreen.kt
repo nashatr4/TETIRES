@@ -1,7 +1,9 @@
 package com.example.tetires.ui.screen
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -108,7 +110,7 @@ fun DaftarBusScreen(
                 }
             }
             item {
-                Spacer(modifier = Modifier.height(28.dp))
+                Spacer(modifier = Modifier.height(24.dp))
             }
             items(filteredBuses) { bus ->
                 BusListItemDatabase(
@@ -205,8 +207,8 @@ fun StatusBadge(status: BusStatus, text: String) {
 
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(50))
-            .background(color)
+            .border(width = 1.dp, color = Color.Black, shape = RoundedCornerShape(50))
+            .background(color, shape = RoundedCornerShape(50))
             .padding(horizontal = 10.dp, vertical = 6.dp)
     ) {
         Text(text, color = Color.Black, fontSize = 12.sp, fontWeight = FontWeight.Medium)
@@ -223,7 +225,19 @@ fun SearchBar(searchQuery: String, onSearchChange: (String) -> Unit, modifier: M
             .fillMaxWidth()
             .height(52.dp)
             .padding(horizontal = 16.dp),
-        leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
+        leadingIcon = {
+            Icon(
+                Icons.Default.Search,
+                contentDescription = "Search"
+            )
+        },
+        placeholder = {
+            Text(
+                text = "Masukkan perusahaan bus atau plat bus",
+                color = Color.Gray,
+                fontSize = 14.sp
+            )
+        },
         shape = RoundedCornerShape(50),
         colors = OutlinedTextFieldDefaults.colors(
             focusedContainerColor = Color.White,
@@ -285,11 +299,11 @@ fun BusListPreview() {
     )
 
     val dummyChecks = listOf(
-        PengecekanRingkas(1, 0, "28 April 2025", "Sinar Jaya", "AB 1234 CD", false, false, false, false, "Aman"),
-        PengecekanRingkas(2, 0, "27 April 2025", "Rosalia Indah", "CD 5678 EF", true, false, false, false, "Aus"),
-        PengecekanRingkas(3, 0, "26 April 2025", "Haryanto", "B 9876 GH", true, true, false, false, "Aus"),
-        PengecekanRingkas(4, 0, "25 April 2025", "Sumber Kencono", "AG 5432 IJ", true, true, true, false, "Aus"),
-        PengecekanRingkas(5, 0, "24 April 2025", "Harapan Jaya", "AB 3456 KL", true, true, true, true, "Aus")
+        PengecekanRingkas(1, 0, "28 April 2025", "12.32", "Sinar Jaya", "AB 1234 CD", false, false, false, false, "Aman"),
+        PengecekanRingkas(2, 0, "27 April 2025", "12.32", "Rosalia Indah", "CD 5678 EF", true, false, false, false, "Aus"),
+        PengecekanRingkas(3, 0, "26 April 2025", "12.32", "Haryanto", "B 9876 GH", true, true, false, false, "Aus"),
+        PengecekanRingkas(4, 0, "25 April 2025", "12.32", "Sumber Kencono", "AG 5432 IJ", true, true, true, false, "Aus"),
+        PengecekanRingkas(5, 0, "24 April 2025", "12.32", "Harapan Jaya", "AB 3456 KL", true, true, true, true, "Aus")
     )
 
     LazyColumn(

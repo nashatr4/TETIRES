@@ -33,6 +33,7 @@ data class Pengecekan(
     val idPengecekan: Long = 0,
     val busId: Long,
     val tanggalMs: Long = System.currentTimeMillis(),
+    val waktuMs: Long = System.currentTimeMillis(),
 
     // status = null -> belum diisi; true = aus; false = tidak aus
     val statusDka: Boolean? = null, // Depan - Kanan (D-KA)

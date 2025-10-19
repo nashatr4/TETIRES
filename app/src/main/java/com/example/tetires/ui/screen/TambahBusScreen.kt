@@ -95,7 +95,7 @@ fun TambahBusScreen(
                         .padding(top = topPadding)
                         .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
                         .background(Color.White)
-                        .padding(24.dp)
+                        .padding(vertical = 24.dp, horizontal = 40.dp)
                 ) {
                     Text(
                         "Perusahaan Bus",
@@ -107,7 +107,7 @@ fun TambahBusScreen(
                         value = namaPerusahaan,
                         onValueChange = { namaPerusahaan = it },
                         modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("Masukan perusahaan bus") },
+                        placeholder = { Text("Masukkan perusahaan bus") },
                         shape = RoundedCornerShape(8.dp),
                         keyboardOptions = KeyboardOptions(
                             capitalization = KeyboardCapitalization.Words,
@@ -128,7 +128,7 @@ fun TambahBusScreen(
                         value = platNomor,
                         onValueChange = { platNomor = it },
                         modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("Masukan plat nomor") },
+                        placeholder = { Text("Masukkan plat nomor") },
                         shape = RoundedCornerShape(8.dp),
                         keyboardOptions = KeyboardOptions(
                             capitalization = KeyboardCapitalization.Characters,
@@ -174,7 +174,7 @@ fun TambahBusScreen(
                     contentScale = ContentScale.Fit,
                     modifier = Modifier
                         .align(Alignment.TopCenter)
-                        .fillMaxWidth(0.8f)
+                        .fillMaxWidth(0.75f)
                         .fillMaxHeight(0.25f)
                         .padding(top = 16.dp)
                 )

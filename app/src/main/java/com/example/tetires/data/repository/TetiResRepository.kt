@@ -55,7 +55,7 @@ class TetiresRepository(
         return if (latest != null && latest.tanggalMs in startOfDay until endOfDay) {
             latest
         } else {
-            val newCheck = Pengecekan(busId = busId, tanggalMs = System.currentTimeMillis())
+            val newCheck = Pengecekan(busId = busId, tanggalMs = System.currentTimeMillis(), waktuMs = System.currentTimeMillis())
             val newId = pengecekanDao.insertPengecekan(newCheck)
 
             detailBanDao.insertDetailBan(DetailBan(pengecekanId = newId))
@@ -116,6 +116,7 @@ class TetiresRepository(
                     idCek = item.idPengecekan,
                     tanggalCek = item.tanggalMs,
                     tanggalReadable = DateUtils.formatDate(item.tanggalMs),
+                    waktuReadable = DateUtils.formatTime(item.tanggalMs),
                     namaBus = item.namaBus,
                     platNomor = item.platNomor,
                     statusDka = item.statusDka,
@@ -138,6 +139,7 @@ class TetiresRepository(
             idCek = check.idPengecekan,
             tanggalCek = check.tanggalMs,
             tanggalReadable = DateUtils.formatDate(check.tanggalMs),
+            waktuReadable = DateUtils.formatTime(check.tanggalMs),
             namaBus = bus.namaBus,
             platNomor = bus.platNomor,
             statusDka = detail.statusDka ?: false,
@@ -242,6 +244,7 @@ class TetiresRepository(
                     idCek = item.idPengecekan,
                     tanggalCek = item.tanggalMs,
                     tanggalReadable = DateUtils.formatDate(item.tanggalMs),
+                    waktuReadable = DateUtils.formatTime(item.tanggalMs),
                     namaBus = item.namaBus,
                     platNomor = item.platNomor,
                     summaryStatus = summaryStatus

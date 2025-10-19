@@ -16,6 +16,11 @@ object DateUtils {
         return sdf.format(Date(epochMillis))
     }
 
+    fun formatTime(epochMillis: Long): String {
+        val sdf = SimpleDateFormat("HH:mm", localeID)
+        return sdf.format(Date(epochMillis))
+    }
+
     /**
      * Ambil epoch millis untuk jam 00:00:00 dari tanggal tertentu
      */

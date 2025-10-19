@@ -7,6 +7,7 @@ package com.example.tetires.data.model
 data class CheckWithBusProjection(
     val idCek: Long,
     val tanggalCek: Long,
+    val waktuCek: Long,
     val namaBus: String,
     val platNomor: String,
     val statusDka: Boolean?,
