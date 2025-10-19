@@ -23,6 +23,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.constraintlayout.compose.ConstraintLayout
+import androidx.constraintlayout.compose.Dimension
 import androidx.navigation.NavController
 import com.example.tetires.R
 import com.example.tetires.data.local.entity.Bus
@@ -74,35 +76,61 @@ fun DaftarBusScreen(
             ) { Icon(Icons.Default.Add, contentDescription = "Tambah Bus", tint = Color.White) }
         }
     ) { paddingValues ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues),
+                .padding(paddingValues)
+                .background(Color.White),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            BusListHeader()
-            SearchBar(searchQuery) { searchQuery = it }
+            item {
+                ConstraintLayout {
+                    val (header, search) = createRefs()
 
-            LazyColumn(
-                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                items(filteredBuses) { bus ->
-                    BusListItemDatabase(bus, viewModel, navController)
+                    BusListHeader(
+                        modifier = Modifier.constrainAs(header) {
+                            top.linkTo(parent.top)
+                            start.linkTo(parent.start)
+                            end.linkTo(parent.end)
+                        }
+                    )
+
+                    SearchBar(
+                        searchQuery = searchQuery,
+                        onSearchChange = { searchQuery = it },
+                        modifier = Modifier.constrainAs(search) {
+                            top.linkTo(header.bottom)
+                            bottom.linkTo(header.bottom)
+                            start.linkTo(parent.start)
+                            end.linkTo(parent.end)
+                        }
+                    )
                 }
-                item { Spacer(modifier = Modifier.height(80.dp)) }
             }
+            item {
+                Spacer(modifier = Modifier.height(28.dp))
+            }
+            items(filteredBuses) { bus ->
+                BusListItemDatabase(
+                    bus = bus,
+                    viewModel = viewModel,
+                    navController = navController,
+                    modifier = Modifier.padding(horizontal = 24.dp)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+            item { Spacer(modifier = Modifier.height(80.dp)) }
         }
     }
 }
 
 @Composable
-fun BusListHeader() {
+fun BusListHeader(modifier: Modifier) {
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .height(185.dp)
-            .background(Color(0xFF19A7CE)),
+            .background(Color(0xFF19A7CE))
+            .padding(bottom = 40.dp, top = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -111,8 +139,8 @@ fun BusListHeader() {
             contentDescription = "Ilustrasi Bus",
             contentScale = ContentScale.Fit,
             modifier = Modifier
-                .height(120.dp)
-                .width(200.dp)
+                .fillMaxWidth(0.5f)
+                .aspectRatio(1.6f)
         )
         Spacer(modifier = Modifier.height(6.dp))
         Text(
@@ -128,7 +156,8 @@ fun BusListHeader() {
 fun BusListItemDatabase(
     bus: Bus,
     viewModel: MainViewModel,
-    navController: NavController
+    navController: NavController,
+    modifier: Modifier
 ) {
     val lastCheckFlow = viewModel.getLastCheckForBus(bus.idBus)
     val latestCheck by lastCheckFlow.collectAsState(initial = null)
@@ -145,7 +174,7 @@ fun BusListItemDatabase(
     val tanggal = latestCheck?.tanggalReadable ?: "Belum pernah diperiksa"
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFFAFD3E2)),
@@ -186,14 +215,14 @@ fun StatusBadge(status: BusStatus, text: String) {
 
 
 @Composable
-fun SearchBar(searchQuery: String, onSearchChange: (String) -> Unit) {
+fun SearchBar(searchQuery: String, onSearchChange: (String) -> Unit, modifier: Modifier = Modifier) {
     OutlinedTextField(
         value = searchQuery,
         onValueChange = onSearchChange,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .height(48.dp)
-            .padding(horizontal = 12.dp, vertical = 4.dp),
+            .height(52.dp)
+            .padding(horizontal = 16.dp),
         leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
         shape = RoundedCornerShape(50),
         colors = OutlinedTextFieldDefaults.colors(
