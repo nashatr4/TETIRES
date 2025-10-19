@@ -116,7 +116,7 @@ class TetiresRepository(
                     idCek = item.idPengecekan,
                     tanggalCek = item.tanggalMs,
                     tanggalReadable = DateUtils.formatDate(item.tanggalMs),
-                    waktuReadable = DateUtils.formatTime(item.tanggalMs),
+                    waktuReadable = DateUtils.formatTime(item.waktuMs),
                     namaBus = item.namaBus,
                     platNomor = item.platNomor,
                     statusDka = item.statusDka,

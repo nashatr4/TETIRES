@@ -191,6 +191,7 @@ class MainViewModel(
             idCek = idPengecekan,
             tanggalCek = tanggalMs,
             tanggalReadable = readableDate,
+            waktuReadable = readableDate,
             namaBus = namaBus,
             platNomor = platNomor,
             statusDka = dka,

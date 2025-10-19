@@ -16,6 +16,7 @@ fun PengecekanWithBus.toPengecekanRingkas(): PengecekanRingkas {
         idCek = idPengecekan,
         tanggalCek = tanggalMs,
         tanggalReadable = readableDate,
+        waktuReadable = readableDate,
         namaBus = namaBus,
         platNomor = platNomor,
         statusDka = dka,

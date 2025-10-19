@@ -14,6 +14,7 @@ interface PengecekanDao {
     SELECT 
         p.idPengecekan,
         p.tanggalMs,
+        p.tanggalMs AS waktuMs,
         p.statusDka,
         p.statusDki,
         p.statusBka,
@@ -75,6 +76,7 @@ interface PengecekanDao {
     SELECT 
         p.idPengecekan,
         p.tanggalMs,
+        p.tanggalMs AS waktuMs,
         p.statusDka,
         p.statusDki,
         p.statusBka,

@@ -75,26 +75,34 @@ fun BerandaScreen(navController: NavController, viewModel: MainViewModel) {
         ) {
             item {
                 HeroBanner(navController)
+            }
+            item {
                 Spacer(modifier = Modifier.height(24.dp))
-                SearchAndFilterSection(
-                    searchQuery = searchQuery,
-                    filterBy = filterBy,
-                    onSearchChange = {
-                        searchQuery = it
-                        viewModel.searchLogs(it)
-                    },
-                    onFilterChange = { filterBy = it }
-                )
+            }
+            item {
+                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    SearchAndFilterSection(
+                        searchQuery = searchQuery,
+                        filterBy = filterBy,
+                        onSearchChange = { searchQuery = it
+                            viewModel.searchLogs(it) },
+                        onFilterChange = { filterBy = it }
+                    )
+                }
+            }
+            item {
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
-            // 🔥 Scrollable table (langsung di LazyColumn)
             item {
-                TableHeader()
+                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    TableHeader()
+                }
             }
-
             items(filteredLogs) { log ->
-                HistoryRow(item = log, navController = navController)
+                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    HistoryRow(item = log, navController = navController)
+                }
             }
         }
     }
@@ -108,10 +116,10 @@ fun TableHeader() {
             .background(ColorNavy, shape = RoundedCornerShape(8.dp))
             .padding(vertical = 12.dp, horizontal = 12.dp)
     ) {
-        Text("Tanggal", Modifier.weight(1.3f), color = Color.White, fontSize = 12.sp, textAlign = TextAlign.Center)
-        Text("Perusahaan Bus", Modifier.weight(1.3f), color = Color.White, fontSize = 12.sp, textAlign = TextAlign.Center)
-        Text("Plat Nomor", Modifier.weight(1.4f), color = Color.White, fontSize = 12.sp, textAlign = TextAlign.Center)
-        Text("Status", Modifier.weight(0.6f), color = Color.White, fontSize = 12.sp, textAlign = TextAlign.Center)
+        Text("Tanggal", Modifier.weight(1.3f), color = Color.White, fontSize = 14.sp, textAlign = TextAlign.Center)
+        Text("PO Bus", Modifier.weight(1.3f), color = Color.White, fontSize = 14.sp, textAlign = TextAlign.Center)
+        Text("Plat Nomor", Modifier.weight(1.4f), color = Color.White, fontSize = 14.sp, textAlign = TextAlign.Center)
+        Text("Status", Modifier.weight(0.6f), color = Color.White, fontSize = 14.sp, textAlign = TextAlign.Center)
     }
 }
 
