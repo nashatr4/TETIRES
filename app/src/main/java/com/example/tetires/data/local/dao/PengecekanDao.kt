@@ -31,7 +31,7 @@ interface PengecekanDao {
     // Ambil semua pengecekan untuk 1 bus, dengan data bus
     @Query(
         """
-        SELECT p.idPengecekan, p.tanggalMs,
+        SELECT p.idPengecekan, p.tanggalMs, p.tanggalMs AS waktuMs,
                p.statusDka, p.statusDki, p.statusBka, p.statusBki,
                b.namaBus, b.platNomor
         FROM pengecekan p
@@ -53,7 +53,7 @@ interface PengecekanDao {
     // 🔥 ambil data pengecekan + bus (join)
     @Query(
         """
-        SELECT p.idPengecekan, p.tanggalMs,
+        SELECT p.idPengecekan, p.tanggalMs, p.tanggalMs AS waktuMs,
                p.statusDka, p.statusDki, p.statusBka, p.statusBki,
                b.namaBus, b.platNomor
         FROM pengecekan p

@@ -7,6 +7,7 @@ package com.example.tetires.data.local.entity
 data class PengecekanByBusWithBus(
     val idPengecekan: Long,
     val tanggalMs: Long,
+    val waktuMs: Long,
     val statusDka: Boolean?,
     val statusDki: Boolean?,
     val statusBka: Boolean?,

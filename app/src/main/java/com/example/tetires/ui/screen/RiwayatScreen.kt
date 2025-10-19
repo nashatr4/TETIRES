@@ -21,6 +21,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -79,7 +80,7 @@ fun RiwayatScreen(
                     busId?.let { viewModel.startCheck(it) }
                 }
             )
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(15.dp))
             RiwayatSection(items, navController, viewModel, busId)
         }
     }
@@ -103,7 +104,6 @@ fun HeaderDeskripsiBus(
         modifier = Modifier
             .fillMaxWidth()
             .background(Color(0xFF19A7CE))
-            .height(185.dp)
             .padding(horizontal = 24.dp, vertical = 20.dp)
     ) {
         Row(
@@ -134,15 +134,15 @@ fun HeaderDeskripsiBus(
                     painter = painterResource(id = R.drawable.busicon),
                     contentDescription = "Ilustrasi Bus",
                     modifier = Modifier
-                        .height(90.dp)
-                        .width(150.dp)
+                        .fillMaxWidth(0.5f)
+                        .aspectRatio(1.5f)
                 )
-                Spacer(modifier = Modifier.height(5.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 Button(
                     onClick = onCekBanClick,
                     shape = RoundedCornerShape(50.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3949A3)),
-                    contentPadding = PaddingValues(horizontal = 60.dp, vertical = 3.dp)
+                    contentPadding = PaddingValues(horizontal = 24.dp, vertical = 4.dp)
                 ) {
                     Text("Cek Ban")
                 }
@@ -170,7 +170,8 @@ fun RiwayatListItem(
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
@@ -180,11 +181,11 @@ fun RiwayatListItem(
                 fontSize = 12.sp
             )
 
-            HorizontalDivider(
+            VerticalDivider(
                 modifier = Modifier
-                    .height(50.dp)
-                    .width(1.dp),
-                color = Color.LightGray
+                    .height(40.dp),
+                color = Color.Black,
+                thickness = 1.dp
             )
 
             Spacer(modifier = Modifier.width(12.dp))
@@ -261,30 +262,75 @@ fun RiwayatSection(
     viewModel: MainViewModel,
     busId: Long?
 ) {
-    if (items.isEmpty()) {
-        Box(
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+            .background(Color.White)
+            .padding(16.dp)
+    ) {
+        Text(
+            "Riwayat Pemeriksaan",
+            fontWeight = FontWeight.Bold,
+            fontSize = 18.sp,
+            color = Color.Black
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(32.dp),
-            contentAlignment = Alignment.Center
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Belum ada riwayat pengecekan",
-                color = Color.Gray,
-                fontSize = 14.sp
+                "Tanggal",
+                modifier = Modifier.weight(2f),
+                textAlign = TextAlign.Left
             )
+
+            Spacer(modifier = Modifier.weight(0.2f))
+
+            Box(modifier = Modifier.weight(0.6f), contentAlignment = Alignment.Center) {
+                Text("D-KI", color = Color.Black, fontSize = 13.sp)
+            }
+            Box(modifier = Modifier.weight(0.6f), contentAlignment = Alignment.Center) {
+                Text("D-KA", color = Color.Black, fontSize = 13.sp)
+            }
+            Box(modifier = Modifier.weight(0.6f), contentAlignment = Alignment.Center) {
+                Text("B-KI", color = Color.Black, fontSize = 13.sp)
+            }
+            Box(modifier = Modifier.weight(0.6f), contentAlignment = Alignment.Center) {
+                Text("B-KA", color = Color.Black, fontSize = 13.sp)
+            }
+            Spacer(modifier = Modifier.weight(0.8f))
         }
-    } else {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-        ) {
-            items(items) { item ->
-                RiwayatListItem(item, navController, viewModel, busId)
-                Spacer(modifier = Modifier.height(8.dp))
+        if (items.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(),
+//                    .padding(32.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Belum ada riwayat pengecekan",
+                    color = Color.Gray,
+                    fontSize = 14.sp
+                )
+            }
+        } else {
+            LazyColumn(
+//                modifier = Modifier
+//                    .fillMaxWidth()
+//                    .padding(horizontal = 16.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(items) { item ->
+                    RiwayatListItem(item, navController, viewModel, busId)
+//                    Spacer(modifier = Modifier.height(8.dp))
+                }
             }
         }
+
     }
 }
 
@@ -312,6 +358,7 @@ fun PreviewRiwayatScreen() {
             idCek = 1,
             tanggalCek = System.currentTimeMillis(),
             tanggalReadable = "20 Sep 2025",
+            waktuReadable = "12.32",
             namaBus = "Sinar Jaya",
             platNomor = "AB 8874 GH",
             statusDka = false,
@@ -324,6 +371,7 @@ fun PreviewRiwayatScreen() {
             idCek = 2,
             tanggalCek = System.currentTimeMillis(),
             tanggalReadable = "18 Sep 2025",
+            waktuReadable = "12.32",
             namaBus = "Sinar Jaya",
             platNomor = "AB 8874 GH",
             statusDka = false,

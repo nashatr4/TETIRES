@@ -4,6 +4,7 @@ data class CheckDetail(
     val idCek: Long,
     val tanggalCek: Long,
     val tanggalReadable: String,
+    val waktuReadable: String,
     val namaBus: String,
     val platNomor: String,
     val statusDka: Boolean,
