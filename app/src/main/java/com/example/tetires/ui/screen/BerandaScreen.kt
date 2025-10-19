@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
@@ -46,53 +47,71 @@ fun BerandaScreen(navController: NavController, viewModel: MainViewModel) {
     var filterBy by remember { mutableStateOf("Semua") }
 
     val filteredLogs = remember(logs, searchQuery, filterBy) {
-        if(searchQuery.isBlank()) {
-            logs
-        }
-        else {
-            logs.filter { log ->
-                when (filterBy) {
-                    "Semua" ->
-                        log.tanggalReadable.contains(searchQuery, ignoreCase = true) ||
-                                log.platNomor.contains(searchQuery, ignoreCase = true) ||
-                                log.namaBus.contains(searchQuery, ignoreCase = true)
-                    "Tanggal" -> log.tanggalReadable.contains(searchQuery, ignoreCase = true)
-                    "Plat Nomor" -> log.platNomor.contains(searchQuery, ignoreCase = true)
-                    "Perusahaan Bus" -> log.namaBus.contains(searchQuery, ignoreCase = true)
-                    "Status" -> log.summaryStatus.contains(searchQuery, ignoreCase = true)
-                    else -> true
-                }
+        if (searchQuery.isBlank()) logs
+        else logs.filter { log ->
+            when (filterBy) {
+                "Tanggal" -> log.tanggalReadable.contains(searchQuery, ignoreCase = true)
+                "Plat Nomor" -> log.platNomor.contains(searchQuery, ignoreCase = true)
+                "Perusahaan Bus" -> log.namaBus.contains(searchQuery, ignoreCase = true)
+                "Status" -> log.summaryStatus.contains(searchQuery, ignoreCase = true)
+                else -> log.tanggalReadable.contains(searchQuery, ignoreCase = true)
+                        || log.platNomor.contains(searchQuery, ignoreCase = true)
+                        || log.namaBus.contains(searchQuery, ignoreCase = true)
+                        || log.summaryStatus.contains(searchQuery, ignoreCase = true)
             }
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-    ) {
-        TopAppBar()
-
-        Column(
+    Scaffold(
+        topBar = { TopAppBar() },
+        containerColor = ColorLightBlue
+    ) { paddingValues ->
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .background(ColorLightBlue)
+                .padding(paddingValues)
+                .background(ColorLightBlue),
+            contentPadding = PaddingValues(bottom = 32.dp)
         ) {
-            HeroBanner(navController)
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-                HistorySection(
-                    logs = filteredLogs,
-                    navController = navController,
+            item {
+                HeroBanner(navController)
+                Spacer(modifier = Modifier.height(24.dp))
+                SearchAndFilterSection(
                     searchQuery = searchQuery,
                     filterBy = filterBy,
-                    onSearchChange = { query ->
-                        searchQuery = query
-                        viewModel.searchLogs(query)
+                    onSearchChange = {
+                        searchQuery = it
+                        viewModel.searchLogs(it)
                     },
                     onFilterChange = { filterBy = it }
                 )
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            // 🔥 Scrollable table (langsung di LazyColumn)
+            item {
+                TableHeader()
+            }
+
+            items(filteredLogs) { log ->
+                HistoryRow(item = log, navController = navController)
+            }
         }
+    }
+}
+
+@Composable
+fun TableHeader() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(ColorNavy, shape = RoundedCornerShape(8.dp))
+            .padding(vertical = 12.dp, horizontal = 12.dp)
+    ) {
+        Text("Tanggal", Modifier.weight(1.3f), color = Color.White, fontSize = 12.sp, textAlign = TextAlign.Center)
+        Text("Perusahaan Bus", Modifier.weight(1.3f), color = Color.White, fontSize = 12.sp, textAlign = TextAlign.Center)
+        Text("Plat Nomor", Modifier.weight(1.4f), color = Color.White, fontSize = 12.sp, textAlign = TextAlign.Center)
+        Text("Status", Modifier.weight(0.6f), color = Color.White, fontSize = 12.sp, textAlign = TextAlign.Center)
     }
 }
 
@@ -295,6 +314,7 @@ fun HistorySection(
 @Composable
 fun HistoryTable(logs: List<LogItem>, navController: NavController) {
     Column {
+        // Header tabel
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -330,13 +350,22 @@ fun HistoryTable(logs: List<LogItem>, navController: NavController) {
                 textAlign = TextAlign.Center
             )
         }
+
         Spacer(modifier = Modifier.height(8.dp))
 
-        logs.forEach { log ->
-            HistoryRow(item = log, navController = navController)
+        // 🔥 Ini bagian yang diganti jadi scrollable
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 400.dp) // atau .weight(1f) kalau mau fleksibel
+        ) {
+            items(logs) { log ->
+                HistoryRow(item = log, navController = navController)
+            }
         }
     }
 }
+
 
 @Composable
 fun HistoryRow(item: LogItem, navController: NavController) {

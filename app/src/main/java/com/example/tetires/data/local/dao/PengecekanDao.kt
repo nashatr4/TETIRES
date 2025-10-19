@@ -4,10 +4,30 @@ import androidx.room.*
 import com.example.tetires.data.local.entity.Pengecekan
 import com.example.tetires.data.local.entity.PengecekanWithBus
 import com.example.tetires.data.local.entity.PengecekanByBusWithBus
+import com.example.tetires.data.model.LogItem
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface PengecekanDao {
+
+    @Query("""
+    SELECT 
+        p.idPengecekan,
+        p.tanggalMs,
+        p.statusDka,
+        p.statusDki,
+        p.statusBka,
+        p.statusBki,
+        b.namaBus,
+        b.platNomor
+    FROM pengecekan p
+    INNER JOIN bus b ON p.busId = b.idBus
+    WHERE p.busId = :busId
+    ORDER BY p.tanggalMs DESC
+    LIMIT 10
+""")
+    fun getLast10Checks(busId: Long): Flow<List<PengecekanWithBus>>
+
 
     @Query("DELETE FROM pengecekan WHERE idPengecekan = :id")
     suspend fun deletePengecekanById(id: Long)
@@ -51,15 +71,22 @@ interface PengecekanDao {
     suspend fun getLatestPengecekanForBus(busId: Long): Pengecekan?
 
     // 🔥 ambil data pengecekan + bus (join)
-    @Query(
-        """
-        SELECT p.idPengecekan, p.tanggalMs,
-               p.statusDka, p.statusDki, p.statusBka, p.statusBki,
-               b.namaBus, b.platNomor
-        FROM pengecekan p
-        INNER JOIN bus b ON p.busId = b.idBus
-        ORDER BY p.tanggalMs DESC
-        """
-    )
-    fun getAllWithBus(): Flow<List<PengecekanWithBus>>
+    @Query("""
+    SELECT 
+        p.idPengecekan,
+        p.tanggalMs,
+        p.statusDka,
+        p.statusDki,
+        p.statusBka,
+        p.statusBki,
+        b.namaBus,
+        b.platNomor
+    FROM pengecekan p
+    INNER JOIN bus b ON p.busId = b.idBus
+    ORDER BY p.tanggalMs DESC
+    LIMIT 10
+""")
+    fun getLast10ChecksAllBus(): Flow<List<PengecekanWithBus>>
+
+
 }

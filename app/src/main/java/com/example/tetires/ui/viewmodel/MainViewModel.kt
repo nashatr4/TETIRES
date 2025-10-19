@@ -2,11 +2,15 @@ package com.example.tetires.ui.viewmodel
 
 import androidx.lifecycle.*
 import com.example.tetires.data.local.entity.Bus
+import com.example.tetires.data.local.entity.PengecekanWithBus
 import com.example.tetires.data.model.*
 import com.example.tetires.data.repository.TetiresRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 data class Event<out T>(private val content: T) {
     private var hasBeenHandled = false
@@ -166,9 +170,38 @@ class MainViewModel(
     fun loadLast10Checks(busId: Long?) {
         if (busId == null) return
         viewModelScope.launch {
-            repository.getLast10Checks(busId).collect { _currentBusChecks.value = it }
+            repository.getLast10Checks(busId).collect { checks ->
+                _currentBusChecks.value = checks
+            }
         }
     }
+
+
+
+    private fun PengecekanWithBus.toPengecekanRingkas(): PengecekanRingkas {
+        val dateFormat = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale("id", "ID"))
+        val readableDate = dateFormat.format(Date(tanggalMs))
+
+        val dka = statusDka == true
+        val dki = statusDki == true
+        val bka = statusBka == true
+        val bki = statusBki == true
+
+        return PengecekanRingkas(
+            idCek = idPengecekan,
+            tanggalCek = tanggalMs,
+            tanggalReadable = readableDate,
+            namaBus = namaBus,
+            platNomor = platNomor,
+            statusDka = dka,
+            statusDki = dki,
+            statusBka = bka,
+            statusBki = bki,
+            summaryStatus = if (dka || dki || bka || bki) "Aus" else "Aman"
+        )
+    }
+
+
 
     // ========= DETAIL =========
     fun loadCheckDetail(idCek: Long) {

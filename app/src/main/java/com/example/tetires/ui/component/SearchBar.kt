@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
+
 @Composable
 fun SearchBar(
     hint: String = "Cari berdasarkan plat nomor atau perusahaan",
