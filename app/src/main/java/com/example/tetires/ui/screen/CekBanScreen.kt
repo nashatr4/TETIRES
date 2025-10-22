@@ -21,10 +21,8 @@ import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.navigation.NavController
 import com.example.tetires.R
 import com.example.tetires.ui.viewmodel.MainViewModel
+import com.example.tetires.data.model.PosisiBan
 
-enum class PosisiBan {
-    D_KI, D_KA, B_KI, B_KA
-}
 
 enum class StatusPengecekan {
     BelumDicek,
@@ -42,10 +40,10 @@ fun CekBanScreen(
     var statusBan by remember {
         mutableStateOf(
             mapOf(
-                PosisiBan.D_KI to StatusPengecekan.BelumDicek,
-                PosisiBan.D_KA to StatusPengecekan.BelumDicek,
-                PosisiBan.B_KI to StatusPengecekan.BelumDicek,
-                PosisiBan.B_KA to StatusPengecekan.BelumDicek
+                PosisiBan.DKI to StatusPengecekan.BelumDicek,
+                PosisiBan.DKA to StatusPengecekan.BelumDicek,
+                PosisiBan.BKI to StatusPengecekan.BelumDicek,
+                PosisiBan.BKA to StatusPengecekan.BelumDicek
             )
         )
     }
@@ -86,12 +84,11 @@ fun CekBanScreen(
                     }
                     statusBan = statusBan + (posisi to nextStatus)
 
-                    // Update ke ViewModel asli
+                    // ✅ kirim posisi yang diklik ke ViewModel
                     viewModel.updateCheckPartial(
                         idCek = idCek,
-                        posisi = posisi.name,
-                        ukuran = 1.5f,
-                        isAus = nextStatus == StatusPengecekan.Aus
+                        posisi = posisi, // diperbaiki dari posisiBan → posisi
+                        ukuran = 1.5f
                     )
                 }
             )
@@ -144,8 +141,8 @@ fun BusLayout(
                 top.linkTo(topGuideline)
                 start.linkTo(startGuideline)
             },
-            status = statusBan.getValue(PosisiBan.D_KI),
-            onClick = { onTireClick(PosisiBan.D_KI) }
+            status = statusBan.getValue(PosisiBan.DKI),
+            onClick = { onTireClick(PosisiBan.DKI) }
         )
 
         StatusIcon(
@@ -153,8 +150,8 @@ fun BusLayout(
                 top.linkTo(topGuideline)
                 end.linkTo(endGuideline)
             },
-            status = statusBan.getValue(PosisiBan.D_KA),
-            onClick = { onTireClick(PosisiBan.D_KA) }
+            status = statusBan.getValue(PosisiBan.DKA),
+            onClick = { onTireClick(PosisiBan.DKA) }
         )
 
         StatusIcon(
@@ -162,8 +159,8 @@ fun BusLayout(
                 bottom.linkTo(bottomGuideline)
                 start.linkTo(startGuideline)
             },
-            status = statusBan.getValue(PosisiBan.B_KI),
-            onClick = { onTireClick(PosisiBan.B_KI) }
+            status = statusBan.getValue(PosisiBan.BKI),
+            onClick = { onTireClick(PosisiBan.BKI) }
         )
 
         StatusIcon(
@@ -171,8 +168,8 @@ fun BusLayout(
                 bottom.linkTo(bottomGuideline)
                 end.linkTo(endGuideline)
             },
-            status = statusBan.getValue(PosisiBan.B_KA),
-            onClick = { onTireClick(PosisiBan.B_KA) }
+            status = statusBan.getValue(PosisiBan.BKA),
+            onClick = { onTireClick(PosisiBan.BKA) }
         )
     }
 }

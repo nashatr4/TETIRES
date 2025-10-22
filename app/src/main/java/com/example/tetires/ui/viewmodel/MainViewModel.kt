@@ -1,10 +1,12 @@
 package com.example.tetires.ui.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.*
 import com.example.tetires.data.local.entity.Bus
 import com.example.tetires.data.local.entity.PengecekanWithBus
 import com.example.tetires.data.model.*
 import com.example.tetires.data.repository.TetiresRepository
+import com.example.tetires.util.TireStatusHelper
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -46,6 +48,10 @@ class MainViewModel(
 
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+
+    // 🔥 NEW: Status message untuk feedback ke user
+    private val _statusMessage = MutableStateFlow<String?>(null)
+    val statusMessage: StateFlow<String?> = _statusMessage.asStateFlow()
 
     // ========= LIVE DATA (One-time event) =========
     private val _startCheckEvent = MutableLiveData<Event<Long>>()
@@ -139,21 +145,35 @@ class MainViewModel(
         }
     }
 
-    fun updateCheckPartial(idCek: Long, posisi: String, ukuran: Float, isAus: Boolean) {
-        val posisiEnum = PosisiBan.fromString(posisi)
-            ?: run { _errorMessage.value = "Posisi ban tidak valid"; return }
+    /**
+     * 🔥 UPDATE: Tidak perlu parameter isAus lagi.
+     * Status ditentukan OTOMATIS dari ukuran (threshold 1.6mm).
+     */
+    fun updateCheckPartial(idCek: Long, posisi: PosisiBan, ukuran: Float) {
+        // Validasi ukuran
+        if (!TireStatusHelper.isValidUkuran(ukuran)) {
+            _errorMessage.value = "Ukuran tidak valid: $ukuran mm (harus 0-50mm)"
+            return
+        }
 
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                val result = repository.updateCheckPartial(idCek, posisiEnum, ukuran, isAus)
+                // langsung kirim enum posisi
+                val result = repository.updateCheckPartial(idCek, posisi, ukuran)
+
+                // update feedback ke UI
+                _statusMessage.value = result.statusMessage
                 _updateCompleteEvent.value = Event(result.complete)
+                _errorMessage.value = null
             } catch (e: Exception) {
                 _errorMessage.value = "Gagal update pengecekan: ${e.message}"
+                _statusMessage.value = null
             }
             _isLoading.value = false
         }
     }
+
 
     // ========= LOG / SEARCH =========
     fun searchLogs(query: String? = null, startDate: Long? = null, endDate: Long? = null) {
@@ -175,8 +195,6 @@ class MainViewModel(
             }
         }
     }
-
-
 
     private fun PengecekanWithBus.toPengecekanRingkas(): PengecekanRingkas {
         val dateFormat = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale("id", "ID"))
@@ -202,17 +220,38 @@ class MainViewModel(
         )
     }
 
-
-
     // ========= DETAIL =========
     fun loadCheckDetail(idCek: Long) {
         viewModelScope.launch {
             _isLoading.value = true
-            try { _checkDetail.value = repository.getCheckDetail(idCek) }
-            catch (e: Exception) { _errorMessage.value = "Gagal memuat detail: ${e.message}" }
+            try {
+                _checkDetail.value = repository.getCheckDetail(idCek)
+            }
+            catch (e: Exception) {
+                _errorMessage.value = "Gagal memuat detail: ${e.message}"
+            }
             _isLoading.value = false
         }
     }
 
-    fun clearError() { _errorMessage.value = null }
+    fun clearError() {
+        _errorMessage.value = null
+        _statusMessage.value = null
+    }
+
+    fun testUpdateFlow() {
+        viewModelScope.launch {
+            try {
+                val result = repository.updateCheckPartial(
+                    idPengecekan = 1L,
+                    posisi = PosisiBan.DKA,
+                    ukuran = 1.4f
+                )
+                Log.d("TEST_RESULT", "Success=${result.complete}, Message=${result.statusMessage ?: "null"}")
+            } catch (e: Exception) {
+                Log.e("TEST_RESULT", "Gagal: ${e.message}")
+            }
+        }
+    }
+
 }
