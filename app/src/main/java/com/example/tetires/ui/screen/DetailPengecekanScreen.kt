@@ -1,14 +1,15 @@
 package com.example.tetires.ui.screen
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -19,10 +20,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import com.example.tetires.data.model.CheckDetail
 import com.example.tetires.ui.viewmodel.MainViewModel
 
+// ---------------- REAL SCREEN ----------------
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetailPengecekanScreen(
@@ -30,9 +31,9 @@ fun DetailPengecekanScreen(
     viewModel: MainViewModel,
     idCek: Long
 ) {
-    // ambil detail dari VM
     viewModel.loadCheckDetail(idCek)
-    val detail = viewModel.checkDetail.collectAsState().value
+    val detail by viewModel.checkDetail.collectAsState()
+    val statusMessage by viewModel.statusMessage.collectAsState()
 
     Scaffold(
         topBar = {
@@ -47,164 +48,270 @@ fun DetailPengecekanScreen(
         }
     ) { paddingValues ->
         detail?.let { d ->
-            DetailPengecekanContent(
-                detail = d,
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .padding(20.dp)
-            )
-        } ?: run {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("Memuat...")
+                Column {
+                    DetailPengecekanContent(detail = d)
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
             }
+        } ?: Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("Memuat data...")
         }
     }
 }
 
 @Composable
-fun DetailPengecekanContent(detail: CheckDetail, modifier: Modifier = Modifier) {
-    Column(modifier = modifier) {
-        // Tanggal pemeriksaan
-        Row(
+fun DetailPengecekanContent(detail: CheckDetail) {
+    Column {
+        // 🔹 Info Bus (lebih menonjol)
+        Card(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFEBF2FF)),
+            shape = RoundedCornerShape(16.dp)
         ) {
-            Text("Tanggal pemeriksaan", color = Color.Black, fontSize = 16.sp)
-            Text(detail.tanggalReadable, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text("Waktu pemeriksaan", color = Color.Black, fontSize = 16.sp)
-            Text(detail.waktuReadable, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Baris Pertama
-        Row(
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Box(modifier = Modifier.weight(1f)) {
-                BanDetailCard("Depan Kiri", detail.statusDki, detail.ukDki)
+            Column(
+                modifier = Modifier
+                    .padding(18.dp)
+                    .fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    detail.namaBus,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 22.sp,
+                    color = Color(0xFF1E3A8A),
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    detail.platNomor,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = Color(0xFF3949A3),
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Divider(color = Color(0xFFB0BEC5), thickness = 1.dp)
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text("Tanggal pemeriksaan", color = Color.Gray, fontSize = 14.sp)
+                        Text(detail.tanggalReadable, fontWeight = FontWeight.Medium, fontSize = 15.sp)
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text("Waktu pemeriksaan", color = Color.Gray, fontSize = 14.sp)
+                        Text(detail.waktuReadable, fontWeight = FontWeight.Medium, fontSize = 15.sp)
+                    }
+                }
             }
+        }
+
+        Spacer(modifier = Modifier.height(28.dp))
+
+        // 🔹 Layout Ban 2x2
+        Row(modifier = Modifier.fillMaxWidth()) {
+            BanDetailCard("Depan Kiri", detail.statusDki, detail.ukDki, Modifier.weight(1f))
             Spacer(modifier = Modifier.width(16.dp))
-            Box(modifier = Modifier.weight(1f)) {
-                BanDetailCard("Depan Kanan", detail.statusDka, detail.ukDka)
-            }
+            BanDetailCard("Depan Kanan", detail.statusDka, detail.ukDka, Modifier.weight(1f))
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Baris Kedua
-        Row(
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Box(modifier = Modifier.weight(1f)) {
-                BanDetailCard("Belakang Kiri", detail.statusBki, detail.ukBki)
-            }
+        Row(modifier = Modifier.fillMaxWidth()) {
+            BanDetailCard("Belakang Kiri", detail.statusBki, detail.ukBki, Modifier.weight(1f))
             Spacer(modifier = Modifier.width(16.dp))
-            Box(modifier = Modifier.weight(1f)) {
-                BanDetailCard("Belakang Kanan", detail.statusBka, detail.ukBka)
-            }
+            BanDetailCard("Belakang Kanan", detail.statusBka, detail.ukBka, Modifier.weight(1f))
         }
     }
 }
 
+// ---------- Card & Badge ----------
 @Composable
-fun BanDetailCard(posisi: String, status: Boolean?, tebalTapak: Float) {
+fun BanDetailCard(
+    posisi: String,
+    status: Boolean?,
+    tebalTapak: Float,
+    modifier: Modifier = Modifier
+) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier,
         shape = RoundedCornerShape(12.dp),
         border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF19A7CE)),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally // 🔹 Center horizontal
         ) {
+            // 🔹 Teks posisi di tengah atas
             Text(
                 posisi,
                 fontWeight = FontWeight.Bold,
                 fontSize = 16.sp,
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth() // Biar benar-benar center
             )
+
             Spacer(modifier = Modifier.height(5.dp))
-            HorizontalDivider(
-                thickness = 1.dp,
-                color = Color(0xFF19A7CE)
-            )
+            HorizontalDivider(thickness = 1.dp, color = Color(0xFF19A7CE))
             Spacer(modifier = Modifier.height(8.dp))
+
+            // 🔹 Bagian isi rata kanan–kiri seperti semula
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("tebal tapak", color = Color.Gray, fontSize = 14.sp)
-                Text("$tebalTapak mm", fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                Text("Tebal Tapak", color = Color.Gray, fontSize = 14.sp)
+                Text(
+                    "${String.format("%.1f", tebalTapak)} mm",
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 14.sp
+                )
             }
+
             Spacer(modifier = Modifier.height(8.dp))
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("status", color = Color.Gray, fontSize = 14.sp)
-                StatusBadge(statusAus = status)
+                Text("Status", color = Color.Gray, fontSize = 14.sp)
+                StatusBadge(status)
             }
         }
     }
 }
 
+
 @Composable
 fun StatusBadge(statusAus: Boolean?) {
     val (text, color) = when (statusAus) {
-        true -> "aus" to Color(0xFFEF4444)
-        false -> "tidak aus" to Color(0xFF10B981)
-        null -> "tidak diketahui" to Color.Gray
+        true -> "Aus" to Color(0xFFEF4444)
+        false -> "Tidak Aus" to Color(0xFF10B981)
+        else -> "Tidak Diketahui" to Color.Gray
     }
     Box(
         modifier = Modifier
-            .border(
-                width = 1.dp,
-                color = Color.Black,
-                shape = RoundedCornerShape(50)
-            )
             .clip(RoundedCornerShape(50))
-            .background(color.copy(alpha = 1f))
+            .background(color.copy(alpha = 0.2f))
             .padding(horizontal = 12.dp, vertical = 4.dp)
     ) {
-        Text(text, color = Color.Black, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+        Text(text, color = color, fontSize = 12.sp, fontWeight = FontWeight.Medium)
     }
 }
 
+// ---------------- PREVIEW ----------------
+data class DummyCheckDetail(
+    val namaBus: String,
+    val platNomor: String,
+    val tanggalReadable: String,
+    val waktuReadable: String,
+    val statusDki: Boolean,
+    val statusDka: Boolean,
+    val statusBki: Boolean,
+    val statusBka: Boolean,
+    val ukDki: Float,
+    val ukDka: Float,
+    val ukBki: Float,
+    val ukBka: Float
+)
+
+@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun PreviewDetailPengecekanScreen() {
-    val dummyDetail = CheckDetail(
-        idCek = 1L,
-        tanggalCek = 1714492800000L,
-        tanggalReadable = "30 April 2024",
-        waktuReadable = "12.32",
-        namaBus = "Bus Pariwisata",
-        platNomor = "AB 1234 CD",
-        statusDka = false,
-        statusDki = true,
+    val dummyDetail = DummyCheckDetail(
+        namaBus = "UGM Trans 01",
+        platNomor = "AB 1234 XY",
+        tanggalReadable = "22 Okt 2025",
+        waktuReadable = "10:30",
+        statusDki = false,
+        statusDka = true,
+        statusBki = false,
         statusBka = false,
-        statusBki = true,
-        ukDka = 10.5f,
-        ukDki = 12.3f,
-        ukBka = 9.7f,
-        ukBki = 11.8f
+        ukDki = 1.7f,
+        ukDka = 1.4f,
+        ukBki = 1.8f,
+        ukBka = 1.6f
     )
 
-    MaterialTheme {
-        DetailPengecekanContent(detail = dummyDetail)
+    Scaffold {
+        Column(modifier = Modifier.padding(16.dp)) {
+            DetailPengecekanPreviewUI(detail = dummyDetail, statusMessage = "Update berhasil")
+        }
+    }
+}
+
+@Composable
+fun DetailPengecekanPreviewUI(detail: DummyCheckDetail, statusMessage: String?) {
+    Column {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFEBF2FF)),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(18.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    detail.namaBus,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 22.sp,
+                    color = Color(0xFF1E3A8A),
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    detail.platNomor,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = Color(0xFF3949A3),
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Tanggal: ${detail.tanggalReadable}", color = Color.Gray, fontSize = 14.sp)
+                    Text("Waktu: ${detail.waktuReadable}", color = Color.Gray, fontSize = 14.sp)
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Row(modifier = Modifier.fillMaxWidth()) {
+            BanDetailCard("Depan Kiri", detail.statusDki, detail.ukDki, Modifier.weight(1f))
+            Spacer(modifier = Modifier.width(16.dp))
+            BanDetailCard("Depan Kanan", detail.statusDka, detail.ukDka, Modifier.weight(1f))
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(modifier = Modifier.fillMaxWidth()) {
+            BanDetailCard("Belakang Kiri", detail.statusBki, detail.ukBki, Modifier.weight(1f))
+            Spacer(modifier = Modifier.width(16.dp))
+            BanDetailCard("Belakang Kanan", detail.statusBka, detail.ukBka, Modifier.weight(1f))
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
     }
 }
