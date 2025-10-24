@@ -51,7 +51,17 @@ class MainViewModel(
 
     // 🔥 NEW: Status message untuk feedback ke user
     private val _statusMessage = MutableStateFlow<String?>(null)
-    val statusMessage: StateFlow<String?> = _statusMessage.asStateFlow()
+
+    // public untuk observe dari UI
+    val statusMessage: StateFlow<String?> = _statusMessage
+
+    fun showStatusMessage(message: String) {
+        _statusMessage.value = message
+    }
+
+    fun clearStatusMessage() {
+        _statusMessage.value = ""
+    }
 
     // ========= LIVE DATA (One-time event) =========
     private val _startCheckEvent = MutableLiveData<Event<Long>>()
@@ -70,7 +80,16 @@ class MainViewModel(
         viewModelScope.launch { repository.getAllBuses().collect { _buses.value = it } }
     }
 
-
+    fun completeCheck(idCek: Long){
+        viewModelScope.launch {
+            try {
+                repository.completeCheck(idCek)
+                _statusMessage.value = "Pengecekan selesai!"
+            } catch(e: Exception){
+                _statusMessage.value = "Gagal menyelesaikan pengecekan: ${e.message}"
+            }
+        }
+    }
 
     suspend fun getBusById(busId: Long): Bus? {
         return repository.getBusById(busId)
@@ -151,31 +170,26 @@ class MainViewModel(
      * 🔥 UPDATE: Tidak perlu parameter isAus lagi.
      * Status ditentukan OTOMATIS dari ukuran (threshold 1.6mm).
      */
-    fun updateCheckPartial(idCek: Long, posisi: PosisiBan, ukuran: Float) {
-        // Validasi ukuran
-        if (!TireStatusHelper.isValidUkuran(ukuran)) {
-            _errorMessage.value = "Ukuran tidak valid: $ukuran mm (harus 0-50mm)"
+    fun updateCheckPartial(idCek: Long, posisi: PosisiBan, ukuran: Float){
+        if(!TireStatusHelper.isValidUkuran(ukuran)){
+            _errorMessage.value = "Ukuran tidak valid: $ukuran mm"
             return
         }
 
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                // langsung kirim enum posisi
                 val result = repository.updateCheckPartial(idCek, posisi, ukuran)
-
-                // update feedback ke UI
                 _statusMessage.value = result.statusMessage
                 _updateCompleteEvent.value = Event(result.complete)
                 _errorMessage.value = null
-            } catch (e: Exception) {
+            } catch (e: Exception){
                 _errorMessage.value = "Gagal update pengecekan: ${e.message}"
                 _statusMessage.value = null
             }
             _isLoading.value = false
         }
     }
-
 
     // ========= LOG / SEARCH =========
     fun searchLogs(query: String? = null, startDate: Long? = null, endDate: Long? = null) {
