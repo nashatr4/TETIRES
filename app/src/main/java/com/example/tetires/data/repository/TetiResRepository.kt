@@ -89,51 +89,36 @@ class TetiresRepository(
         posisi: PosisiBan,
         ukuran: Float
     ): UpdateResult {
-        // Validasi ukuran
-        if (!TireStatusHelper.isValidUkuran(ukuran)) {
-            throw IllegalArgumentException("Ukuran tidak valid: $ukuran mm")
-        }
+        if (!TireStatusHelper.isValidUkuran(ukuran)) throw IllegalArgumentException("Ukuran tidak valid")
 
-        val check = pengecekanDao.getPengecekanById(idPengecekan)
-            ?: throw IllegalArgumentException("Pengecekan not found")
+        val check = pengecekanDao.getPengecekanById(idPengecekan) ?: throw IllegalArgumentException("Pengecekan not found")
+        val detail = detailBanDao.getDetailsByCheckId(idPengecekan).firstOrNull() ?: throw IllegalArgumentException("Detail not found")
 
-        val detail = detailBanDao.getDetailsByCheckId(idPengecekan).firstOrNull()
-            ?: throw IllegalArgumentException("Detail not found")
-
-        // 🔥 OTOMATIS tentukan status berdasarkan ukuran (SINGLE SOURCE OF TRUTH)
         val isAus = TireStatusHelper.isAus(ukuran) ?: false
 
-        // Update KEDUA tabel dengan status yang SAMA
-        val updatedCheck = when (posisi) {
+        val updatedCheck = when(posisi){
             PosisiBan.DKA -> check.copy(statusDka = isAus)
             PosisiBan.DKI -> check.copy(statusDki = isAus)
             PosisiBan.BKA -> check.copy(statusBka = isAus)
             PosisiBan.BKI -> check.copy(statusBki = isAus)
         }
 
-        val updatedDetail = when (posisi) {
-            PosisiBan.DKA -> detail.copy(ukDka = ukuran, statusDka = isAus)
-            PosisiBan.DKI -> detail.copy(ukDki = ukuran, statusDki = isAus)
-            PosisiBan.BKA -> detail.copy(ukBka = ukuran, statusBka = isAus)
-            PosisiBan.BKI -> detail.copy(ukBki = ukuran, statusBki = isAus)
+        val updatedDetail = when(posisi){
+            PosisiBan.DKA -> detail.copy(ukDka=ukuran,statusDka=isAus)
+            PosisiBan.DKI -> detail.copy(ukDki=ukuran,statusDki=isAus)
+            PosisiBan.BKA -> detail.copy(ukBka=ukuran,statusBka=isAus)
+            PosisiBan.BKI -> detail.copy(ukBki=ukuran,statusBki=isAus)
         }
 
-        // Simpan ke database (SINKRON)
         pengecekanDao.updatePengecekan(updatedCheck)
         detailBanDao.updateDetailBan(updatedDetail)
 
-        // Cek apakah semua posisi sudah diisi
-        val isComplete = listOf(
-            updatedCheck.statusDka,
-            updatedCheck.statusDki,
-            updatedCheck.statusBka,
-            updatedCheck.statusBki
-        ).all { it != null }
+        val isComplete = listOf(updatedCheck.statusDka, updatedCheck.statusDki, updatedCheck.statusBka, updatedCheck.statusBki).all{ it!=null }
 
         return UpdateResult(
             complete = isComplete,
             idCek = idPengecekan,
-            statusMessage = if (isAus) "Ban aus (≤1.6mm)" else "Ban tidak aus (>1.6mm)"
+            statusMessage = if(isAus) "Ban aus (≤1.6mm)" else "Ban tidak aus (>1.6mm)"
         )
     }
 
@@ -256,6 +241,52 @@ class TetiresRepository(
             }
         }
     }
+
+    suspend fun completeCheck(idCek: Long) {
+        val detailList = detailBanDao.getDetailsByCheckId(idCek)
+        val updatedList = detailList.map { detail ->
+            val updatedDetail = detail.copy(
+                statusDka = detail.statusDka ?: (detail.ukDka?.let { it <= 1.6f } ?: false),
+                statusDki = detail.statusDki ?: (detail.ukDki?.let { it <= 1.6f } ?: false),
+                statusBka = detail.statusBka ?: (detail.ukBka?.let { it <= 1.6f } ?: false),
+                statusBki = detail.statusBki ?: (detail.ukBki?.let { it <= 1.6f } ?: false)
+            )
+            updatedDetail
+        }
+        detailBanDao.updateDetailBan(updatedList)
+    }
+
+    suspend fun updateAndCompleteCheck(
+        idPengecekan: Long,
+        updates: Map<PosisiBan, Float>
+    ) {
+        val check = pengecekanDao.getPengecekanById(idPengecekan)
+            ?: throw IllegalArgumentException("Pengecekan not found")
+        val detail = detailBanDao.getDetailsByCheckId(idPengecekan).firstOrNull()
+            ?: throw IllegalArgumentException("Detail not found")
+
+        val updatedDetail = updates.entries.fold(detail) { acc, (posisi, ukuran) ->
+            val isAus = TireStatusHelper.isAus(ukuran) ?: false
+            when (posisi) {
+                PosisiBan.DKA -> acc.copy(ukDka = ukuran, statusDka = isAus)
+                PosisiBan.DKI -> acc.copy(ukDki = ukuran, statusDki = isAus)
+                PosisiBan.BKA -> acc.copy(ukBka = ukuran, statusBka = isAus)
+                PosisiBan.BKI -> acc.copy(ukBki = ukuran, statusBki = isAus)
+            }
+        }
+
+        detailBanDao.updateDetailBan(updatedDetail)
+
+        // update pengecekan
+        val updatedCheck = check.copy(
+            statusDka = updatedDetail.statusDka,
+            statusDki = updatedDetail.statusDki,
+            statusBka = updatedDetail.statusBka,
+            statusBki = updatedDetail.statusBki
+        )
+        pengecekanDao.updatePengecekan(updatedCheck)
+    }
+
 
     fun searchLogs(query: LogQuery): Flow<List<LogItem>> {
         return pengecekanDao.getLast10ChecksAllBus().map { list ->
