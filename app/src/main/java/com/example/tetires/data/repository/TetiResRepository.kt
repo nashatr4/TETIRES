@@ -52,21 +52,32 @@ class TetiresRepository(
 
         val latest = pengecekanDao.getLatestPengecekanForBus(busId)
 
-        return if (latest != null && latest.tanggalMs in startOfDay until endOfDay) {
-            latest
+        val shouldCreateNew = if (latest == null) {
+            true
         } else {
+            val detailList = detailBanDao.getDetailsByCheckId(latest.idPengecekan)
+            val lastDetail = detailList.firstOrNull()
+            val isComplete = lastDetail?.let {
+                listOf(it.ukDka, it.ukDki, it.ukBka, it.ukBki).all { uk -> uk != null }
+            } ?: false
+            isComplete
+        }
+
+        return if (shouldCreateNew) {
             val newCheck = Pengecekan(
                 busId = busId,
                 tanggalMs = System.currentTimeMillis(),
                 waktuMs = System.currentTimeMillis()
             )
             val newId = pengecekanDao.insertPengecekan(newCheck)
-
             detailBanDao.insertDetailBan(DetailBan(pengecekanId = newId))
-
             newCheck.copy(idPengecekan = newId)
+        } else {
+            // 💡 di sini tambahin null handling
+            latest ?: throw IllegalStateException("Gagal mendapatkan pengecekan terbaru untuk busId=$busId")
         }
     }
+
 
     /**
      * Update pengecekan dengan ukuran tapak ban.
