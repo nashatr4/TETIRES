@@ -41,59 +41,31 @@ class TetiresRepository(
 
     // ========== PENGECEKAN ==========
     suspend fun startOrGetOpenCheck(busId: Long): Pengecekan {
-        val calendar = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }
-        val startOfDay = calendar.timeInMillis
-        val endOfDay = (calendar.apply { add(Calendar.DAY_OF_MONTH, 1) }).timeInMillis
-
         val latest = pengecekanDao.getLatestPengecekanForBus(busId)
-
-        val shouldCreateNew = if (latest == null) {
-            true
-        } else {
+        val shouldCreateNew = if (latest == null) true
+        else {
             val detailList = detailBanDao.getDetailsByCheckId(latest.idPengecekan)
             val lastDetail = detailList.firstOrNull()
-            val isComplete = lastDetail?.let {
-                listOf(it.ukDka, it.ukDki, it.ukBka, it.ukBki).all { uk -> uk != null }
-            } ?: false
-            isComplete
+            lastDetail?.let { listOf(it.ukDka, it.ukDki, it.ukBka, it.ukBki).all { uk -> uk != null } } ?: false
         }
 
         return if (shouldCreateNew) {
-            val newCheck = Pengecekan(
-                busId = busId,
-                tanggalMs = System.currentTimeMillis(),
-                waktuMs = System.currentTimeMillis()
-            )
+            val newCheck = Pengecekan(busId = busId, tanggalMs = System.currentTimeMillis(), waktuMs = System.currentTimeMillis())
             val newId = pengecekanDao.insertPengecekan(newCheck)
             detailBanDao.insertDetailBan(DetailBan(pengecekanId = newId))
             newCheck.copy(idPengecekan = newId)
-        } else {
-            // 💡 di sini tambahin null handling
-            latest ?: throw IllegalStateException("Gagal mendapatkan pengecekan terbaru untuk busId=$busId")
-        }
+        } else latest ?: throw IllegalStateException("Gagal mendapatkan pengecekan terbaru untuk busId=$busId")
     }
-
-
     /**
      * Update pengecekan dengan ukuran tapak ban.
      * Status aus/tidak aus ditentukan OTOMATIS berdasarkan ukuran (threshold 1.6mm).
      * Data disinkronkan ke tabel pengecekan DAN detail_ban.
      */
-    suspend fun updateCheckPartial(
-        idPengecekan: Long,
-        posisi: PosisiBan,
-        ukuran: Float
-    ): UpdateResult {
-        if (!TireStatusHelper.isValidUkuran(ukuran)) throw IllegalArgumentException("Ukuran tidak valid")
+    suspend fun updateCheckPartial(idPengecekan: Long, posisi: PosisiBan, ukuran: Float): UpdateResult {
+        require(TireStatusHelper.isValidUkuran(ukuran)) { "Ukuran tidak valid" }
 
         val check = pengecekanDao.getPengecekanById(idPengecekan) ?: throw IllegalArgumentException("Pengecekan not found")
         val detail = detailBanDao.getDetailsByCheckId(idPengecekan).firstOrNull() ?: throw IllegalArgumentException("Detail not found")
-
         val isAus = TireStatusHelper.isAus(ukuran) ?: false
 
         val updatedCheck = when(posisi){
@@ -113,13 +85,8 @@ class TetiresRepository(
         pengecekanDao.updatePengecekan(updatedCheck)
         detailBanDao.updateDetailBan(updatedDetail)
 
-        val isComplete = listOf(updatedCheck.statusDka, updatedCheck.statusDki, updatedCheck.statusBka, updatedCheck.statusBki).all{ it!=null }
-
-        return UpdateResult(
-            complete = isComplete,
-            idCek = idPengecekan,
-            statusMessage = if(isAus) "Ban aus (≤1.6mm)" else "Ban tidak aus (>1.6mm)"
-        )
+        val isComplete = listOf(updatedCheck.statusDka, updatedCheck.statusDki, updatedCheck.statusBka, updatedCheck.statusBki).all { it != null }
+        return UpdateResult(complete = isComplete, idCek = idPengecekan, statusMessage = if (isAus) "Ban aus (≤1.6mm)" else "Ban tidak aus (>1.6mm)")
     }
 
     fun getLast10Checks(busId: Long): Flow<List<PengecekanRingkas>> {
@@ -245,25 +212,22 @@ class TetiresRepository(
     suspend fun completeCheck(idCek: Long) {
         val detailList = detailBanDao.getDetailsByCheckId(idCek)
         val updatedList = detailList.map { detail ->
-            val updatedDetail = detail.copy(
+            detail.copy(
                 statusDka = detail.statusDka ?: (detail.ukDka?.let { it <= 1.6f } ?: false),
                 statusDki = detail.statusDki ?: (detail.ukDki?.let { it <= 1.6f } ?: false),
                 statusBka = detail.statusBka ?: (detail.ukBka?.let { it <= 1.6f } ?: false),
                 statusBki = detail.statusBki ?: (detail.ukBki?.let { it <= 1.6f } ?: false)
             )
-            updatedDetail
         }
-        detailBanDao.updateDetailBan(updatedList)
+
+        for (detail in updatedList) {
+            detailBanDao.updateDetailBan(detail)
+        }
     }
 
-    suspend fun updateAndCompleteCheck(
-        idPengecekan: Long,
-        updates: Map<PosisiBan, Float>
-    ) {
-        val check = pengecekanDao.getPengecekanById(idPengecekan)
-            ?: throw IllegalArgumentException("Pengecekan not found")
-        val detail = detailBanDao.getDetailsByCheckId(idPengecekan).firstOrNull()
-            ?: throw IllegalArgumentException("Detail not found")
+    suspend fun updateAndCompleteCheck(idPengecekan: Long, updates: Map<PosisiBan, Float>) {
+        val check = pengecekanDao.getPengecekanById(idPengecekan) ?: throw IllegalArgumentException("Pengecekan not found")
+        val detail = detailBanDao.getDetailsByCheckId(idPengecekan).firstOrNull() ?: throw IllegalArgumentException("Detail not found")
 
         val updatedDetail = updates.entries.fold(detail) { acc, (posisi, ukuran) ->
             val isAus = TireStatusHelper.isAus(ukuran) ?: false
@@ -276,8 +240,6 @@ class TetiresRepository(
         }
 
         detailBanDao.updateDetailBan(updatedDetail)
-
-        // update pengecekan
         val updatedCheck = check.copy(
             statusDka = updatedDetail.statusDka,
             statusDki = updatedDetail.statusDki,
