@@ -44,15 +44,7 @@ fun DaftarBusScreen(
 ) {
     val buses by viewModel.buses.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
-
-    // Filter bus sesuai search
-    val filteredBuses = remember(buses, searchQuery) {
-        if (searchQuery.isBlank()) buses
-        else buses.filter { bus ->
-            bus.namaBus.contains(searchQuery, ignoreCase = true) ||
-                    bus.platNomor.contains(searchQuery, ignoreCase = true)
-        }
-    }
+    var selectedAusFilter by remember { mutableStateOf<Int?>(null) }
 
     Scaffold(
         topBar = {
@@ -86,42 +78,138 @@ fun DaftarBusScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             item {
-                ConstraintLayout {
-                    val (header, search) = createRefs()
-
-                    BusListHeader(
-                        modifier = Modifier.constrainAs(header) {
-                            top.linkTo(parent.top)
-                            start.linkTo(parent.start)
-                            end.linkTo(parent.end)
-                        }
-                    )
-
-                    SearchBar(
+                Column {
+                    BusListHeader(modifier = Modifier.fillMaxWidth())
+                    SearchBarWithDropdown(
                         searchQuery = searchQuery,
                         onSearchChange = { searchQuery = it },
-                        modifier = Modifier.constrainAs(search) {
-                            top.linkTo(header.bottom)
-                            bottom.linkTo(header.bottom)
-                            start.linkTo(parent.start)
-                            end.linkTo(parent.end)
-                        }
+                        selectedAusFilter = selectedAusFilter,
+                        onFilterChange = { selectedAusFilter = it },
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             }
-            item {
-                Spacer(modifier = Modifier.height(24.dp))
+
+            item { Spacer(modifier = Modifier.height(24.dp)) }
+
+            // Loop semua bus, langsung cek filter
+            // Di DaftarBusScreen
+            items(buses) { bus ->
+                val latestCheck by viewModel.getLastCheckForBus(bus.idBus).collectAsState()
+                val ausCount = listOf(
+                    latestCheck?.statusDka,
+                    latestCheck?.statusDki,
+                    latestCheck?.statusBka,
+                    latestCheck?.statusBki
+                ).count { it == true }
+
+                // --- START: parsing searchQuery untuk ban aus ---
+                val searchLower = searchQuery.trim().lowercase()
+                val mappedAusFilter = when {
+                    searchLower.contains("tidak") || searchLower.contains("0") -> 0
+                    searchLower.contains("1") || searchLower.contains("satu") -> 1
+                    searchLower.contains("2") || searchLower.contains("dua") -> 2
+                    searchLower.contains("3") || searchLower.contains("tiga") -> 3
+                    searchLower.contains("4") || searchLower.contains("empat") -> 4
+                    else -> null
+                }
+                // --- END ---
+
+                val matchesSearch = searchQuery.isBlank() ||
+                        bus.namaBus.contains(searchQuery, ignoreCase = true) ||
+                        bus.platNomor.contains(searchQuery, ignoreCase = true) ||
+                        (mappedAusFilter != null && mappedAusFilter == ausCount)
+
+                val matchesAus = selectedAusFilter == null || ausCount == selectedAusFilter
+
+                if (matchesSearch && matchesAus) {
+                    BusListItemDatabase(
+                        bus = bus,
+                        viewModel = viewModel,
+                        navController = navController,
+                        modifier = Modifier.padding(horizontal = 24.dp)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
             }
-            items(filteredBuses) { bus ->
-                BusListItemDatabase(
-                    bus = bus,
-                    viewModel = viewModel,
-                    navController = navController,
-                    modifier = Modifier.padding(horizontal = 24.dp)
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SearchBarWithDropdown(
+    searchQuery: String,
+    onSearchChange: (String) -> Unit,
+    selectedAusFilter: Int?,
+    onFilterChange: (Int?) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val options = listOf(
+        "Semua" to null,
+        "Tidak ada ban aus" to 0,
+        "1 ban aus" to 1,
+        "2 ban aus" to 2,
+        "3 ban aus" to 3,
+        "4 ban aus" to 4
+    )
+
+    Box(
+        modifier = modifier
+            .padding(horizontal = 16.dp)
+            .padding(top = 16.dp) // jarak dari header biru
+    ) {
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = onSearchChange,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp),
+            placeholder = { if (searchQuery.isEmpty()) Text("Cari bus...", color = Color.Gray) },
+            shape = RoundedCornerShape(24.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = Color.Black,
+                unfocusedTextColor = Color.Black,
+                focusedContainerColor = Color.White,
+                unfocusedContainerColor = Color.White,
+                cursorColor = Color.Black,
+                focusedBorderColor = Color.Black,
+                unfocusedBorderColor = Color.Black,
+                focusedPlaceholderColor = Color.Gray,
+                unfocusedPlaceholderColor = Color.Gray
+            )
+        )
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color.White)
+        ) {
+            options.forEach { (label, value) ->
+                DropdownMenuItem(
+                    text = { Text(label, color = Color.Black) },
+                    onClick = {
+                        onFilterChange(value)
+                        expanded = false
+                        onSearchChange("") // hapus search saat pilih filter
+                    }
                 )
-                Spacer(modifier = Modifier.height(16.dp))
             }
-            item { Spacer(modifier = Modifier.height(80.dp)) }
+        }
+
+        // Icon search di sebelah kanan untuk buka dropdown filter
+        IconButton(
+            onClick = { expanded = !expanded },
+            modifier = Modifier.align(Alignment.CenterEnd)
+        ) {
+            Icon(
+                Icons.Default.Search,
+                contentDescription = "Filter",
+                tint = Color.Black
+            )
         }
     }
 }
@@ -209,7 +297,7 @@ fun StatusBadge(status: BusStatus, text: String) {
         modifier = Modifier
             .border(width = 1.dp, color = Color.Black, shape = RoundedCornerShape(50))
             .background(color, shape = RoundedCornerShape(50))
-            .padding(horizontal = 10.dp, vertical = 6.dp)
+            .padding(horizontal = 12.dp, vertical = 6.dp)
     ) {
         Text(text, color = Color.Black, fontSize = 12.sp, fontWeight = FontWeight.Medium)
     }
@@ -225,12 +313,6 @@ fun SearchBar(searchQuery: String, onSearchChange: (String) -> Unit, modifier: M
             .fillMaxWidth()
             .height(52.dp)
             .padding(horizontal = 16.dp),
-        leadingIcon = {
-            Icon(
-                Icons.Default.Search,
-                contentDescription = "Search"
-            )
-        },
         placeholder = {
             Text(
                 text = "Masukkan perusahaan bus atau plat bus",
@@ -238,7 +320,7 @@ fun SearchBar(searchQuery: String, onSearchChange: (String) -> Unit, modifier: M
                 fontSize = 14.sp
             )
         },
-        shape = RoundedCornerShape(50),
+        shape = RoundedCornerShape(80),
         colors = OutlinedTextFieldDefaults.colors(
             focusedContainerColor = Color.White,
             unfocusedContainerColor = Color.White,

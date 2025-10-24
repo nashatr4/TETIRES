@@ -200,6 +200,63 @@ class TetiresRepository(
     }
 
     // ========== LOG ==========
+    // ========== BUS FILTER / SEARCH ==========
+    fun searchBuses(
+        query: String?,
+        ausCount: Int? = null // 1, 2, 3, 4, atau 0 (tidak ada ban aus)
+    ): Flow<List<PengecekanRingkas>> {
+        return pengecekanDao.getLast10ChecksAllBus().map { list ->
+            list.filter { item ->
+                val q = query?.trim()?.lowercase() ?: ""
+
+                val nameMatch = item.namaBus.lowercase().contains(q)
+                val plateMatch = item.platNomor.lowercase().contains(q)
+
+                // hitung jumlah ban aus
+                val ausTotal = listOf(
+                    item.statusDka,
+                    item.statusDki,
+                    item.statusBka,
+                    item.statusBki
+                ).count { it == true }
+
+                // kalau ausCount != null, hanya tampilkan yang sesuai jumlahnya
+                val ausMatch = ausCount?.let { ausTotal == it } ?: true
+
+                val queryMatch = if (q.isNotEmpty()) {
+                    nameMatch || plateMatch ||
+                            DateUtils.formatDate(item.tanggalMs).lowercase().contains(q)
+                } else true
+
+                queryMatch && ausMatch
+            }.map { item ->
+                val summaryStatus = when (
+                    listOf(item.statusDka, item.statusDki, item.statusBka, item.statusBki).count { it == true }
+                ) {
+                    0 -> "Tidak Aus"
+                    1 -> "1 Ban Aus"
+                    2 -> "2 Ban Aus"
+                    3 -> "3 Ban Aus"
+                    else -> "4 Ban Aus"
+                }
+
+                PengecekanRingkas(
+                    idCek = item.idPengecekan,
+                    tanggalCek = item.tanggalMs,
+                    tanggalReadable = DateUtils.formatDate(item.tanggalMs),
+                    waktuReadable = DateUtils.formatTime(item.waktuMs),
+                    namaBus = item.namaBus,
+                    platNomor = item.platNomor,
+                    statusDka = item.statusDka,
+                    statusDki = item.statusDki,
+                    statusBka = item.statusBka,
+                    statusBki = item.statusBki,
+                    summaryStatus = summaryStatus
+                )
+            }
+        }
+    }
+
     fun searchLogs(query: LogQuery): Flow<List<LogItem>> {
         return pengecekanDao.getLast10ChecksAllBus().map { list ->
             list.filter { item ->
