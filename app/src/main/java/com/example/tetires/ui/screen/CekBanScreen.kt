@@ -49,22 +49,32 @@ fun CekBanScreen(
         )
     }
 
+    // Untuk menampilkan pesan dari ViewModel
+    val snackbarHostState = remember { SnackbarHostState() }
+    val message by viewModel.statusMessage.collectAsState(initial = "")
+
+    // Tampilkan snack bar ketika ada pesan
+    LaunchedEffect(message) {
+        if (!message.isNullOrEmpty()) {
+            snackbarHostState.showSnackbar(message ?: "")
+            viewModel.clearStatusMessage()
+        }
+    }
+
+
+
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = {
-                    Text(
-                        text = "Cek Ban",
-                        fontWeight = FontWeight.Bold
-                    )
-                },
+                title = { Text("Cek Ban", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
                     }
                 }
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -73,7 +83,6 @@ fun CekBanScreen(
                 .padding(horizontal = 16.dp, vertical = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-
             BusLayout(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -87,20 +96,11 @@ fun CekBanScreen(
                         StatusPengecekan.Aus -> StatusPengecekan.BelumDicek
                     }
                     statusBan = statusBan + (posisi to nextStatus)
-
-                    // ✅ panggil ViewModel sesuai updateCheckPartial terbaru
-                    viewModel.updateCheckPartial(
-                        idCek = idCek,
-                        posisi = posisi,
-                        ukuran = 1.5f
-                    )
                 }
             )
 
-
             Spacer(modifier = Modifier.height(8.dp))
 
-                // Wrap buttons in Column agar bisa kasih weight
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -110,7 +110,9 @@ fun CekBanScreen(
                     onClick = {
                         val belumDicek = statusBan.values.any { it == StatusPengecekan.BelumDicek }
                         if (belumDicek) {
-                            viewModel.showStatusMessage("Anda yakin untuk menyelesaikan pengecekan? Belum semua ban dicek")
+                            viewModel.showStatusMessage(
+                                "Anda yakin untuk menyelesaikan pengecekan? Belum semua ban dicek"
+                            )
                         } else {
                             viewModel.completeCheck(idCek)
                         }
@@ -134,6 +136,7 @@ fun CekBanScreen(
         }
     }
 }
+
 
 @Composable
 fun BusLayout(
