@@ -30,6 +30,7 @@ enum class StatusPengecekan {
     Aus
 }
 
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CekBanScreen(
@@ -72,8 +73,11 @@ fun CekBanScreen(
                 .padding(horizontal = 16.dp, vertical = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+
             BusLayout(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.7f),
                 statusBan = statusBan,
                 onTireClick = { posisi ->
                     val currentStatus = statusBan[posisi]!!
@@ -84,24 +88,48 @@ fun CekBanScreen(
                     }
                     statusBan = statusBan + (posisi to nextStatus)
 
-                    // ✅ kirim posisi yang diklik ke ViewModel
+                    // ✅ panggil ViewModel sesuai updateCheckPartial terbaru
                     viewModel.updateCheckPartial(
                         idCek = idCek,
-                        posisi = posisi, // diperbaiki dari posisiBan → posisi
+                        posisi = posisi,
                         ukuran = 1.5f
                     )
                 }
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
 
-            Button(
-                onClick = { navController.navigate("detailPengecekan/$idCek") },
-                modifier = Modifier.padding(bottom = 100.dp),
-                shape = RoundedCornerShape(50.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3949A3))
+            Spacer(modifier = Modifier.height(8.dp))
+
+                // Wrap buttons in Column agar bisa kasih weight
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Text("Detail Pengecekan", color = Color.White)
+                Button(
+                    onClick = {
+                        val belumDicek = statusBan.values.any { it == StatusPengecekan.BelumDicek }
+                        if (belumDicek) {
+                            viewModel.showStatusMessage("Anda yakin untuk menyelesaikan pengecekan? Belum semua ban dicek")
+                        } else {
+                            viewModel.completeCheck(idCek)
+                        }
+                    },
+                    modifier = Modifier.size(width = 250.dp, height = 56.dp),
+                    shape = RoundedCornerShape(50.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3949A3))
+                ) {
+                    Text("Selesai", color = Color.White)
+                }
+
+                Button(
+                    onClick = { navController.navigate("detailPengecekan/$idCek") },
+                    modifier = Modifier.size(width = 250.dp, height = 56.dp),
+                    shape = RoundedCornerShape(50.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3949A3))
+                ) {
+                    Text("Detail Pengecekan", color = Color.White)
+                }
             }
         }
     }
@@ -109,6 +137,7 @@ fun CekBanScreen(
 
 @Composable
 fun BusLayout(
+
     modifier: Modifier = Modifier,
     statusBan: Map<PosisiBan, StatusPengecekan>,
     onTireClick: (PosisiBan) -> Unit
@@ -116,8 +145,8 @@ fun BusLayout(
     ConstraintLayout(modifier = modifier.fillMaxSize()) {
         val (busImage, iconDKI, iconDKA, iconBKI, iconBKA) = createRefs()
 
-        val topGuideline = createGuidelineFromTop(0.3f)
-        val bottomGuideline = createGuidelineFromBottom(0.3f)
+        val topGuideline = createGuidelineFromTop(0.15f)
+        val bottomGuideline = createGuidelineFromBottom(0.15f)
         val startGuideline = createGuidelineFromStart(0.1f)
         val endGuideline = createGuidelineFromEnd(0.1f)
 
