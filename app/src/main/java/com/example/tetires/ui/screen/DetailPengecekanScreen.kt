@@ -80,58 +80,58 @@ fun DetailPengecekanContent(detail: CheckDetail) {
         ) {
             Column(
                 modifier = Modifier
-                    .padding(18.dp)
+                    .padding(12.dp)
                     .fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
                     detail.namaBus,
                     fontWeight = FontWeight.ExtraBold,
-                    fontSize = 22.sp,
+                    fontSize = 18.sp,
                     color = Color(0xFF1E3A8A),
                     textAlign = TextAlign.Center
                 )
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     detail.platNomor,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
+                    fontSize = 16.sp,
                     color = Color(0xFF3949A3),
                     textAlign = TextAlign.Center
                 )
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(6.dp))
                 Divider(color = Color(0xFFB0BEC5), thickness = 1.dp)
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(6.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column {
-                        Text("Tanggal pemeriksaan", color = Color.Gray, fontSize = 14.sp)
-                        Text(detail.tanggalReadable, fontWeight = FontWeight.Medium, fontSize = 15.sp)
+                        Text("Tanggal pemeriksaan", color = Color.Gray, fontSize = 13.sp)
+                        Text(detail.tanggalReadable, fontWeight = FontWeight.Medium, fontSize = 13.sp)
                     }
                     Column(horizontalAlignment = Alignment.End) {
-                        Text("Waktu pemeriksaan", color = Color.Gray, fontSize = 14.sp)
-                        Text(detail.waktuReadable, fontWeight = FontWeight.Medium, fontSize = 15.sp)
+                        Text("Waktu pemeriksaan", color = Color.Gray, fontSize = 13.sp)
+                        Text(detail.waktuReadable, fontWeight = FontWeight.Medium, fontSize = 13.sp)
                     }
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(28.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
         // 🔹 Layout Ban 2x2
         Row(modifier = Modifier.fillMaxWidth()) {
             BanDetailCard("Depan Kiri", detail.statusDki, detail.ukDki, Modifier.weight(1f))
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(10.dp))
             BanDetailCard("Depan Kanan", detail.statusDka, detail.ukDka, Modifier.weight(1f))
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
         Row(modifier = Modifier.fillMaxWidth()) {
             BanDetailCard("Belakang Kiri", detail.statusBki, detail.ukBki, Modifier.weight(1f))
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(10.dp))
             BanDetailCard("Belakang Kanan", detail.statusBka, detail.ukBka, Modifier.weight(1f))
         }
     }
@@ -156,13 +156,13 @@ fun BanDetailCard(
             modifier = Modifier
                 .padding(16.dp)
                 .fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally // 🔹 Center horizontal
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // 🔹 Teks posisi di tengah atas
             Text(
                 posisi,
                 fontWeight = FontWeight.Bold,
-                fontSize = 16.sp,
+                fontSize = 13.sp,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth() // Biar benar-benar center
             )
@@ -176,11 +176,11 @@ fun BanDetailCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("Tebal Tapak", color = Color.Gray, fontSize = 14.sp)
+                Text("Tebal Tapak", color = Color.Gray, fontSize = 12.sp)
                 Text(
                     "${String.format("%.1f", tebalTapak)} mm",
                     fontWeight = FontWeight.Medium,
-                    fontSize = 14.sp
+                    fontSize = 12.sp
                 )
             }
 
@@ -190,7 +190,7 @@ fun BanDetailCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("Status", color = Color.Gray, fontSize = 14.sp)
+                Text("Status", color = Color.Gray, fontSize = 12.sp)
                 StatusBadge(status)
             }
         }
@@ -209,9 +209,9 @@ fun StatusBadge(statusAus: Boolean?) {
         modifier = Modifier
             .clip(RoundedCornerShape(50))
             .background(color.copy(alpha = 0.2f))
-            .padding(horizontal = 12.dp, vertical = 4.dp)
+            .padding(horizontal = 8.dp, vertical = 1.dp)
     ) {
-        Text(text, color = color, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+        Text(text, color = color, fontSize = 8.sp, fontWeight = FontWeight.Medium)
     }
 }
 

@@ -100,20 +100,29 @@ fun TambahBusScreen(
                     Text(
                         "Perusahaan Bus",
                         fontWeight = FontWeight.SemiBold,
+                        fontSize = 15.sp,
                         color = Color(0xFF3949A3)
                     )
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
                     OutlinedTextField(
                         value = namaPerusahaan,
                         onValueChange = { namaPerusahaan = it },
                         modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("Masukkan perusahaan bus") },
+                        placeholder = { Text("Masukkan perusahaan bus", fontSize = 13.sp) },
                         shape = RoundedCornerShape(8.dp),
                         keyboardOptions = KeyboardOptions(
                             capitalization = KeyboardCapitalization.Words,
                             imeAction = ImeAction.Next
                         ),
-                        enabled = !isLoading
+                        enabled = !isLoading,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = Color.White,
+                            unfocusedContainerColor = Color.White,
+                            focusedBorderColor = Color.Black,
+                            unfocusedBorderColor = Color.LightGray,
+                            focusedTextColor = Color.Black,
+                            unfocusedTextColor = Color.Black
+                        )
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -121,20 +130,29 @@ fun TambahBusScreen(
                     Text(
                         "Plat Nomor",
                         fontWeight = FontWeight.SemiBold,
+                        fontSize = 15.sp,
                         color = Color(0xFF3949A3)
                     )
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
                     OutlinedTextField(
                         value = platNomor,
                         onValueChange = { platNomor = it },
                         modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("Masukkan plat nomor") },
+                        placeholder = { Text("Masukkan plat nomor", fontSize = 13.sp) },
                         shape = RoundedCornerShape(8.dp),
                         keyboardOptions = KeyboardOptions(
                             capitalization = KeyboardCapitalization.Characters,
                             imeAction = ImeAction.Done
                         ),
-                        enabled = !isLoading
+                        enabled = !isLoading,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = Color.White,
+                            unfocusedContainerColor = Color.White,
+                            focusedBorderColor = Color.Black,
+                            unfocusedBorderColor = Color.LightGray,
+                            focusedTextColor = Color.Black,
+                            unfocusedTextColor = Color.Black
+                        )
                     )
 
                     Spacer(modifier = Modifier.height(20.dp))

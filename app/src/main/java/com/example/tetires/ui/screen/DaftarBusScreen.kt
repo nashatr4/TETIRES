@@ -90,7 +90,7 @@ fun DaftarBusScreen(
                 }
             }
 
-            item { Spacer(modifier = Modifier.height(24.dp)) }
+            item { Spacer(modifier = Modifier.height(12.dp)) }
 
             // Loop semua bus, langsung cek filter
             // Di DaftarBusScreen
@@ -220,7 +220,7 @@ fun BusListHeader(modifier: Modifier) {
         modifier = modifier
             .fillMaxWidth()
             .background(Color(0xFF19A7CE))
-            .padding(bottom = 40.dp, top = 16.dp),
+            .padding(bottom = 16.dp, top = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -272,7 +272,7 @@ fun BusListItemDatabase(
     ) {
         Row(
             modifier = Modifier
-                .padding(20.dp)
+                .padding(16.dp)
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -282,7 +282,7 @@ fun BusListItemDatabase(
             }
             Column(horizontalAlignment = Alignment.End) {
                 StatusBadge(status, statusText)
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 Text("terakhir diperiksa $tanggal", color = Color.Black, fontSize = 10.sp)
             }
         }
@@ -316,7 +316,7 @@ fun SearchBar(searchQuery: String, onSearchChange: (String) -> Unit, modifier: M
         placeholder = {
             Text(
                 text = "Masukkan perusahaan bus atau plat bus",
-                color = Color.Gray,
+                color = Color.Black,
                 fontSize = 14.sp
             )
         },
@@ -325,7 +325,9 @@ fun SearchBar(searchQuery: String, onSearchChange: (String) -> Unit, modifier: M
             focusedContainerColor = Color.White,
             unfocusedContainerColor = Color.White,
             focusedBorderColor = Color.Gray,
-            unfocusedBorderColor = Color.LightGray
+            unfocusedBorderColor = Color.LightGray,
+            focusedTextColor = Color.Black,
+            unfocusedTextColor = Color.Black
         )
     )
 }

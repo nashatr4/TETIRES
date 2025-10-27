@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -178,10 +179,12 @@ fun RiwayatListItem(
         ) {
             Text(
                 item.tanggalReadable,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(2f),
                 fontWeight = FontWeight.Medium,
-                fontSize = 12.sp
+                fontSize = 12.sp,
+                maxLines = 1
             )
+            Spacer(modifier = Modifier.weight(0.2f))
 
             VerticalDivider(
                 modifier = Modifier
@@ -190,14 +193,20 @@ fun RiwayatListItem(
                 thickness = 1.dp
             )
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Box(modifier = Modifier.weight(0.6f), contentAlignment = Alignment.Center) {
+                StatusDot(isAus = item.statusDki == true)
+            }
+            Box(modifier = Modifier.weight(0.6f), contentAlignment = Alignment.Center) {
+                StatusDot(isAus = item.statusDka == true)
+            }
+            Box(modifier = Modifier.weight(0.6f), contentAlignment = Alignment.Center) {
+                StatusDot(isAus = item.statusBki == true)
+            }
+            Box(modifier = Modifier.weight(0.6f), contentAlignment = Alignment.Center) {
+                StatusDot(isAus = item.statusBka == true)
+            }
 
-            StatusDot(item.statusDki == true)
-            StatusDot(item.statusDka == true)
-            StatusDot(item.statusBki == true)
-            StatusDot(item.statusBka == true)
-
-            Box {
+            Box (modifier = Modifier.weight(0.8f), contentAlignment = Alignment.Center) {
                 IconButton(onClick = { expanded = true }) {
                     Icon(Icons.Default.MoreVert, contentDescription = "Opsi")
                 }
@@ -287,7 +296,9 @@ fun RiwayatSection(
             Text(
                 "Tanggal",
                 modifier = Modifier.weight(2f),
-                textAlign = TextAlign.Left
+                textAlign = TextAlign.Left,
+                color = Color.Black,
+                fontSize = 13.sp
             )
 
             Spacer(modifier = Modifier.weight(0.2f))

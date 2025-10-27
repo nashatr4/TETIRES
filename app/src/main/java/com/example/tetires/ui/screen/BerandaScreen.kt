@@ -116,10 +116,10 @@ fun TableHeader() {
             .background(ColorNavy, shape = RoundedCornerShape(8.dp))
             .padding(vertical = 12.dp, horizontal = 12.dp)
     ) {
-        Text("Tanggal", Modifier.weight(1.3f), color = Color.White, fontSize = 14.sp, textAlign = TextAlign.Center)
-        Text("PO Bus", Modifier.weight(1.3f), color = Color.White, fontSize = 14.sp, textAlign = TextAlign.Center)
-        Text("Plat Nomor", Modifier.weight(1.4f), color = Color.White, fontSize = 14.sp, textAlign = TextAlign.Center)
-        Text("Status", Modifier.weight(0.6f), color = Color.White, fontSize = 14.sp, textAlign = TextAlign.Center)
+        Text("Tanggal", Modifier.weight(1.2f), color = Color.White, fontSize = 12.sp, textAlign = TextAlign.Center)
+        Text("PO Bus", Modifier.weight(1.2f), color = Color.White, fontSize = 12.sp, textAlign = TextAlign.Center)
+        Text("Plat Nomor", Modifier.weight(1.5f), color = Color.White, fontSize = 12.sp, textAlign = TextAlign.Center)
+        Text("Status", Modifier.weight(0.6f), color = Color.White, fontSize = 12.sp, textAlign = TextAlign.Center)
     }
 }
 
@@ -331,30 +331,30 @@ fun HistoryTable(logs: List<LogItem>, navController: NavController) {
         ) {
             Text(
                 text = "Tanggal",
-                modifier = Modifier.weight(1.3f),
+                modifier = Modifier.weight(1.2f),
                 color = Color.White,
-                fontSize = 14.sp,
+                fontSize = 10.sp,
                 textAlign = TextAlign.Center
             )
             Text(
                 text = "PO Bus",
-                modifier = Modifier.weight(1.3f),
+                modifier = Modifier.weight(1.2f),
                 color = Color.White,
-                fontSize = 14.sp,
+                fontSize = 10.sp,
                 textAlign = TextAlign.Center
             )
             Text(
                 text = "Plat Nomor",
-                modifier = Modifier.weight(1.4f),
+                modifier = Modifier.weight(1.5f),
                 color = Color.White,
-                fontSize = 14.sp,
+                fontSize = 10.sp,
                 textAlign = TextAlign.Center
             )
             Text(
                 text = "Status",
-                modifier = Modifier.weight(0.6f),
+                modifier = Modifier.weight(1f),
                 color = Color.White,
-                fontSize = 14.sp,
+                fontSize = 10.sp,
                 textAlign = TextAlign.Center
             )
         }
@@ -365,10 +365,14 @@ fun HistoryTable(logs: List<LogItem>, navController: NavController) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(max = 400.dp) // atau .weight(1f) kalau mau fleksibel
+                .heightIn(max = 400.dp)
         ) {
             items(logs) { log ->
                 HistoryRow(item = log, navController = navController)
+                HorizontalDivider(
+                    thickness = 1.dp,
+                    color = Color.Black
+                )
             }
         }
     }
@@ -390,40 +394,36 @@ fun HistoryRow(item: LogItem, navController: NavController) {
         ) {
             Text(
                 text = item.tanggalReadable,
-                modifier = Modifier.weight(1.5f),
-                fontSize = 14.sp,
+                modifier = Modifier.weight(1.2f),
+                fontSize = 13.sp,
                 textAlign = TextAlign.Center,
                 color = Color.Black
             )
             Text(
                 text = item.namaBus,
-                modifier = Modifier.weight(1.5f),
-                fontSize = 14.sp,
+                modifier = Modifier.weight(1.2f),
+                fontSize = 13.sp,
                 textAlign = TextAlign.Center,
                 color = Color.Black
             )
             Text(
                 text = item.platNomor,
                 modifier = Modifier.weight(1.5f),
-                fontSize = 14.sp,
+                fontSize = 13.sp,
                 textAlign = TextAlign.Center,
                 fontWeight = FontWeight.SemiBold,
                 color = Color.Black
             )
             Text(
                 text = item.summaryStatus,
-                modifier = Modifier.weight(0.8f),
-                fontSize = 14.sp,
+                modifier = Modifier.weight(1f),
+                fontSize = 13.sp,
                 textAlign = TextAlign.Center,
                 color = if (item.summaryStatus == "Aus") ColorRed else ColorGreen,
                 fontWeight = FontWeight.Bold
             )
         }
     }
-    HorizontalDivider(
-        thickness = 1.dp,
-        color = Color.Black
-    )
 }
 
 
