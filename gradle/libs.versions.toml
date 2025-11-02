@@ -17,6 +17,7 @@ navigation = "2.9.4"
 foundation = "1.9.2"
 runtimeLivedata = "1.9.2"
 ui = "1.9.2"
+foundationVersion = "1.9.4"
 
 
 [libraries]
@@ -43,6 +44,7 @@ navigation-compose = { group = "androidx.navigation", name = "navigation-compose
 androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "foundation" }
 androidx-compose-runtime-livedata = { group = "androidx.compose.runtime", name = "runtime-livedata", version.ref = "runtimeLivedata" }
 androidx-compose-ui = { group = "androidx.compose.ui", name = "ui", version.ref = "ui" }
+androidx-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "foundationVersion" }
 
 
 [plugins]
