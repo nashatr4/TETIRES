@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
@@ -64,9 +65,24 @@ fun BerandaScreen(navController: NavController, viewModel: MainViewModel) {
 
     Scaffold(
         topBar = { TopAppBar() },
-        containerColor = ColorLightBlue
-    ) { paddingValues ->
-        LazyColumn(
+        containerColor = ColorLightBlue,
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { navController.navigate("terminal") },
+                shape = CircleShape,
+                containerColor = Color(0xFF3A5FCD)
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.terminal),
+                    contentDescription = "Buka Terminal",
+                    tint = Color.Unspecified, // ⬅️ jangan ubah warna, biarkan aslinya!
+                    modifier = Modifier.size(40.dp)
+                )
+
+            }
+        },
+        floatingActionButtonPosition = FabPosition.End
+    ) { paddingValues -> LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
@@ -140,7 +156,7 @@ fun TopAppBar() {
                     contentDescription = "Logo Tetires Hitam",
                     modifier = Modifier.size(55.dp)
                 )
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     text = "TETIRES",
                     fontSize = 20.sp,
@@ -151,7 +167,8 @@ fun TopAppBar() {
         },
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = Color.White
-        )
+        ),
+        windowInsets = WindowInsets(0.dp)
     )
 }
 
