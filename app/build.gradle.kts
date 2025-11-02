@@ -56,17 +56,19 @@ android {
 
 chaquopy {
     defaultConfig {
-        // Path Python harus pakai escape di Windows
-        buildPython("C:\\Users\\msi\\AppData\\Local\\Programs\\Python\\Python310\\python.exe")
+        version = "3.11"
+        pip {
+            install("numpy")
+            install("pandas")
+            install("scipy")
+        }
     }
 
     productFlavors {
         getByName("py310") {
-            version = "3.10"
+            version = "3.11"
         }
     }
-
-    sourceSets {}
 }
 
 dependencies {

@@ -38,9 +38,9 @@ fun TerminalScreen(navController: NavController, context: Context) {
     val terminalText by viewModel.terminalText
     val lastCheck by viewModel.lastCheck
 
-    val bluetoothHelper = remember { BluetoothHelper(context) }
-
-    var status by remember { mutableStateOf("🔴 Disconnected") }
+//    val bluetoothHelper = remember { BluetoothHelper(context) }
+//
+//    var status by remember { mutableStateOf("🔴 Disconnected") }
 
     val scrollState = rememberScrollState()
     val coroutineScope = rememberCoroutineScope()
@@ -50,21 +50,23 @@ fun TerminalScreen(navController: NavController, context: Context) {
     var searchResults by remember { mutableStateOf(listOf<Int>()) }
     var currentResultIndex by remember { mutableStateOf(0) }
 
-    bluetoothHelper.onDataReceived = {
-        viewModel.addLog(it)
-    }
-
-
-    bluetoothHelper.onStatusChange = {
-        status = it
-    }
+//    bluetoothHelper.onDataReceived = {
+//        viewModel.addLog(it)
+//    }
+//
+//
+//    bluetoothHelper.onStatusChange = {
+//        status = it
+//    }
 
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text("Bluetooth Terminal", fontWeight = FontWeight.Bold)  },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = {
+                        navController.popBackStack()
+                    }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
                     }
                 }
@@ -79,19 +81,19 @@ fun TerminalScreen(navController: NavController, context: Context) {
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // 💡 Status bar
-            Surface(
-                color = if (status.contains("Connected")) Color(0xFFD9F99D) else Color(0xFFFECACA),
-                shape = RoundedCornerShape(40.dp),
-                tonalElevation = 3.dp,
-                modifier = Modifier.fillMaxWidth()
-                    .shadow(4.dp, RoundedCornerShape(50))
-            ) {
-                Text(
-                    text = "Status: $status",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(12.dp)
-                )
-            }
+//            Surface(
+//                color = if (status.contains("Connected")) Color(0xFFD9F99D) else Color(0xFFFECACA),
+//                shape = RoundedCornerShape(40.dp),
+//                tonalElevation = 3.dp,
+//                modifier = Modifier.fillMaxWidth()
+//                    .shadow(4.dp, RoundedCornerShape(50))
+//            ) {
+//                Text(
+//                    text = "Status: $status",
+//                    style = MaterialTheme.typography.titleMedium,
+//                    modifier = Modifier.padding(12.dp)
+//                )
+//            }
 
             // 🔘 Connect / Disconnect Buttons
             Row(
@@ -101,7 +103,7 @@ fun TerminalScreen(navController: NavController, context: Context) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Button(
-                    onClick = { bluetoothHelper.connect() },
+                    onClick = { viewModel.connectBluetooth() },
                     modifier = Modifier
                         . weight(1f)
                         .shadow(4.dp, RoundedCornerShape(50)),
@@ -111,13 +113,24 @@ fun TerminalScreen(navController: NavController, context: Context) {
                     Text("Connect")
                 }
                 OutlinedButton(
-                    onClick = { bluetoothHelper.disconnect() },
+                    onClick = { viewModel.disconnectBluetooth() },
                     modifier = Modifier
                         . weight(1f),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFDC2626))
                 ) {
                     Text("Disconnect")
                 }
+            }
+
+            Button(
+                onClick = { viewModel.processBufferWithPython() }, // <-- Panggil fungsi baru di ViewModel
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
+                    .shadow(4.dp, RoundedCornerShape(50)),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3949A3)) // Warna Navy
+            ) {
+                Text("Proses Data ke Python")
             }
 
             // 🖥️ Terminal Log Header + Search Modern
