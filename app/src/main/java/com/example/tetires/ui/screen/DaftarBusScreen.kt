@@ -18,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -136,7 +137,6 @@ fun DaftarBusScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchBarWithDropdown(
     searchQuery: String,
@@ -146,73 +146,82 @@ fun SearchBarWithDropdown(
     modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val options = listOf(
-        "Semua" to null,
-        "Tidak ada ban aus" to 0,
-        "1 ban aus" to 1,
-        "2 ban aus" to 2,
-        "3 ban aus" to 3,
-        "4 ban aus" to 4
-    )
 
-    Box(
+    Row(
         modifier = modifier
-            .padding(horizontal = 16.dp)
-            .padding(top = 16.dp) // jarak dari header biru
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        OutlinedTextField(
+        // Search field mirip Beranda
+        TextField(
             value = searchQuery,
             onValueChange = onSearchChange,
             modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp),
-            placeholder = { if (searchQuery.isEmpty()) Text("Cari bus...", color = Color.Gray) },
-            shape = RoundedCornerShape(24.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = Color.Black,
-                unfocusedTextColor = Color.Black,
-                focusedContainerColor = Color.White,
+                .weight(1f)
+                .height(52.dp)
+                .shadow(elevation = 4.dp, shape = RoundedCornerShape(50))
+                .clip(RoundedCornerShape(50)),
+            placeholder = { Text("Cari bus atau plat nomor...", fontSize = 14.sp) },
+            leadingIcon = {
+                Icon(
+                    Icons.Default.Search,
+                    contentDescription = "Cari",
+                    modifier = Modifier.size(20.dp)
+                )
+            },
+            shape = RoundedCornerShape(50),
+            colors = TextFieldDefaults.colors(
                 unfocusedContainerColor = Color.White,
-                cursorColor = Color.Black,
-                focusedBorderColor = Color.Black,
-                unfocusedBorderColor = Color.Black,
-                focusedPlaceholderColor = Color.Gray,
-                unfocusedPlaceholderColor = Color.Gray
+                focusedContainerColor = Color.White,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent
             )
         )
 
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Color.White)
-        ) {
-            options.forEach { (label, value) ->
-                DropdownMenuItem(
-                    text = { Text(label, color = Color.Black) },
-                    onClick = {
-                        onFilterChange(value)
-                        expanded = false
-                        onSearchChange("") // hapus search saat pilih filter
-                    }
+        // Filter dropdown tombol bundar
+        Box {
+            IconButton(
+                onClick = { expanded = true },
+                modifier = Modifier
+                    .size(52.dp)
+                    .shadow(4.dp, shape = RoundedCornerShape(50))
+                    .clip(RoundedCornerShape(50))
+                    .background(Color.White)
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.filtericon),
+                    contentDescription = "Filter",
+                    modifier = Modifier.size(20.dp)
                 )
             }
-        }
 
-        // Icon search di sebelah kanan untuk buka dropdown filter
-        IconButton(
-            onClick = { expanded = !expanded },
-            modifier = Modifier.align(Alignment.CenterEnd)
-        ) {
-            Icon(
-                Icons.Default.Search,
-                contentDescription = "Filter",
-                tint = Color.Black
-            )
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                listOf(
+                    "Semua" to null,
+                    "Tidak ada ban aus" to 0,
+                    "1 ban aus" to 1,
+                    "2 ban aus" to 2,
+                    "3 ban aus" to 3,
+                    "4 ban aus" to 4
+                ).forEach { (label, value) ->
+                    DropdownMenuItem(
+                        text = { Text(label) },
+                        onClick = {
+                            onFilterChange(value)
+                            expanded = false
+                        }
+                    )
+                }
+            }
         }
     }
 }
+
 
 @Composable
 fun BusListHeader(modifier: Modifier) {
