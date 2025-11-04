@@ -92,7 +92,7 @@ fun RiwayatScreen(
     val startCheckEvent by viewModel.startCheckEvent.observeAsState()
     LaunchedEffect(startCheckEvent) {
         startCheckEvent?.getContentIfNotHandled()?.let { checkId ->
-            navController.navigate("cekBan/$checkId")
+            navController.navigate("cekBan/${busId}/${checkId}")
         }
     }
 }
@@ -215,24 +215,25 @@ fun RiwayatListItem(
                     onDismissRequest = { expanded = false }
                 ) {
                     DropdownMenuItem(
-                        text = { Text("Lihat Detail") },
-                        onClick = {
-                            expanded = false
-                            navController.navigate("detailPengecekan/${item.idCek}")
-                        }
-                    )
-                    DropdownMenuItem(
                         text = { Text("Edit") },
                         onClick = {
                             expanded = false
-                            navController.navigate("cekBan/${item.idCek}")
+                            busId?.let { navController.navigate("cekBan/$it/${item.idCek}") }
                         }
                     )
+
                     DropdownMenuItem(
                         text = { Text("Delete") },
                         onClick = {
                             expanded = false
                             showDeleteDialog = true
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Lihat Detail") },
+                        onClick = {
+                            expanded = false
+                            navController.navigate("detailPengecekan/${item.idCek}")
                         }
                     )
                 }
