@@ -2,10 +2,13 @@ package com.example.tetires.util
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.bluetooth.*
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothSocket
 import android.content.Context
 import android.content.pm.PackageManager
 import android.util.Log
+import androidx.annotation.RequiresPermission
 import androidx.core.app.ActivityCompat
 import kotlinx.coroutines.*
 import java.io.IOException
@@ -13,121 +16,277 @@ import java.io.InputStream
 import java.io.OutputStream
 import java.util.*
 
+/**
+ * BluetoothHelper - Mengelola koneksi Bluetooth dengan HC-05/STM32
+ *
+ * Features:
+ * - Auto-connect ke device tertentu (by name/address)
+ * - Callback-based untuk data & status
+ * - Thread-safe operation
+ * - Auto-reconnect (optional)
+ */
 class BluetoothHelper(private val context: Context) {
+
+    private val TAG = "BluetoothHelper"
+
+    // Bluetooth components
     private var bluetoothAdapter: BluetoothAdapter? = null
     private var bluetoothSocket: BluetoothSocket? = null
-    private var outputStream: OutputStream? = null
     private var inputStream: InputStream? = null
-    private var hc05Device: BluetoothDevice? = null
-    private var readJob: Job? = null
+    private var outputStream: OutputStream? = null
 
-    private val sppUUID: UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
-    private val HC05_NAME = "HC-05"
+    // Thread untuk membaca data
+    private var readThread: Thread? = null
+    private var isReading = false
 
+    // Coroutine scope untuk operasi async
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
+    // Target device (bisa diset dari luar atau hardcode)
+    var targetDeviceName: String = "HC-05"  // Ganti sesuai nama Bluetooth module
+    var targetDeviceAddress: String? = null  // Atau pakai MAC address langsung
+
+    // UUID standar untuk SPP (Serial Port Profile)
+    private val SPP_UUID: UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
+
+    // Callbacks
     var onDataReceived: ((String) -> Unit)? = null
     var onStatusChange: ((String) -> Unit)? = null
+    var onError: ((String) -> Unit)? = null
 
     init {
-        val manager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
-        bluetoothAdapter = manager.adapter
+        bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
+
+        if (bluetoothAdapter == null) {
+            Log.e(TAG, "Device doesn't support Bluetooth")
+            onError?.invoke("Device tidak mendukung Bluetooth")
+        } else if (bluetoothAdapter?.isEnabled == false) {
+            Log.w(TAG, "Bluetooth is disabled")
+            onStatusChange?.invoke("Bluetooth dimatikan. Silakan aktifkan.")
+        }
     }
 
-    fun isSupported(): Boolean = bluetoothAdapter != null
-    fun isConnected(): Boolean = bluetoothSocket?.isConnected == true
+    /**
+     * Cek permission Bluetooth (Android 12+)
+     */
+    private fun hasBluetoothPermission(): Boolean {
+        return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            ActivityCompat.checkSelfPermission(
+                context,
+                Manifest.permission.BLUETOOTH_CONNECT
+            ) == PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
+    }
 
+    /**
+     * Connect ke Bluetooth device
+     */
     @SuppressLint("MissingPermission")
     fun connect() {
-        val adapter = bluetoothAdapter ?: return
-
-        if (!adapter.isEnabled) {
-            onStatusChange?.invoke("⚠️ Bluetooth belum aktif!")
+        if (!hasBluetoothPermission()) {
+            onError?.invoke("Permission Bluetooth belum diberikan")
             return
         }
 
-        // ✅ Cek izin Bluetooth runtime (Android 12+)
-        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT)
-            != PackageManager.PERMISSION_GRANTED
-        ) {
-            onStatusChange?.invoke("⚠️ Akses Bluetooth belum diizinkan oleh user.")
+        if (bluetoothAdapter?.isEnabled == false) {
+            onStatusChange?.invoke("Bluetooth dimatikan. Aktifkan dulu!")
             return
         }
 
-        val pairedDevices = try {
-            adapter.bondedDevices
-        } catch (e: SecurityException) {
-            onStatusChange?.invoke("❌ Error akses Bluetooth: ${e.message}")
-            return
-        }
-
-        hc05Device = pairedDevices.firstOrNull { it.name == HC05_NAME }
-
-        if (hc05Device == null) {
-            onStatusChange?.invoke("⚠️ Device HC-05 belum di-pair di pengaturan.")
-            return
-        }
-
-        CoroutineScope(Dispatchers.IO).launch {
+        scope.launch {
             try {
-                adapter.cancelDiscovery()
-                bluetoothSocket = hc05Device!!.createRfcommSocketToServiceRecord(sppUUID)
-                bluetoothSocket!!.connect()
-                outputStream = bluetoothSocket!!.outputStream
-                inputStream = bluetoothSocket!!.inputStream
+                onStatusChange?.invoke("Mencari device...")
 
-                withContext(Dispatchers.Main) {
-                    onStatusChange?.invoke("🟢 Connected to ${hc05Device!!.name}")
+                // Cari device berdasarkan name atau address
+                val device = findTargetDevice()
+
+                if (device == null) {
+                    withContext(Dispatchers.Main) {
+                        onError?.invoke("Device '$targetDeviceName' tidak ditemukan. Pastikan sudah paired.")
+                    }
+                    return@launch
                 }
 
-                startReading()
+                onStatusChange?.invoke("Menghubungkan ke ${device.name}...")
+
+                // Buat socket connection
+                bluetoothSocket = device.createRfcommSocketToServiceRecord(SPP_UUID)
+
+                // Cancel discovery untuk speed up connection
+                bluetoothAdapter?.cancelDiscovery()
+
+                // Connect (blocking call)
+                bluetoothSocket?.connect()
+
+                // Dapatkan streams
+                inputStream = bluetoothSocket?.inputStream
+                outputStream = bluetoothSocket?.outputStream
+
+                withContext(Dispatchers.Main) {
+                    onStatusChange?.invoke("Connected to ${device.name}")
+                }
+
+                // Mulai thread untuk baca data
+                startReadingData()
+
             } catch (e: IOException) {
+                Log.e(TAG, "Connection failed: ${e.message}", e)
                 withContext(Dispatchers.Main) {
-                    onStatusChange?.invoke("❌ Gagal konek: ${e.message}")
+                    onError?.invoke("Koneksi gagal: ${e.message}")
+                    disconnect()
                 }
-                disconnect()
+            } catch (e: Exception) {
+                Log.e(TAG, "Unexpected error: ${e.message}", e)
+                withContext(Dispatchers.Main) {
+                    onError?.invoke("Error: ${e.message}")
+                }
             }
         }
     }
 
+    /**
+     * Cari device berdasarkan name atau address
+     */
+    @SuppressLint("MissingPermission")
+    private fun findTargetDevice(): BluetoothDevice? {
+        val pairedDevices = bluetoothAdapter?.bondedDevices ?: return null
+
+        // Cari berdasarkan address dulu (lebih spesifik)
+        if (targetDeviceAddress != null) {
+            val device = pairedDevices.find { it.address == targetDeviceAddress }
+            if (device != null) return device
+        }
+
+        // Kalau tidak ada, cari berdasarkan name
+        return pairedDevices.find {
+            it.name?.contains(targetDeviceName, ignoreCase = true) == true
+        }
+    }
+
+    /**
+     * Thread untuk membaca data dari Bluetooth
+     */
+    private fun startReadingData() {
+        isReading = true
+        readThread = Thread {
+            val buffer = ByteArray(1024)
+            var bytes: Int
+
+            while (isReading) {
+                try {
+                    // Baca data dari input stream
+                    bytes = inputStream?.read(buffer) ?: -1
+
+                    if (bytes > 0) {
+                        val receivedData = String(buffer, 0, bytes).trim()
+
+                        // Callback ke UI thread
+                        scope.launch(Dispatchers.Main) {
+                            onDataReceived?.invoke(receivedData)
+                        }
+                    }
+                } catch (e: IOException) {
+                    Log.e(TAG, "Read error: ${e.message}")
+                    isReading = false
+
+                    scope.launch(Dispatchers.Main) {
+                        onStatusChange?.invoke("Connection lost")
+                        disconnect()
+                    }
+                    break
+                }
+            }
+        }
+        readThread?.start()
+    }
+
+    /**
+     * Kirim data (command) ke device
+     */
+    fun send(data: String) {
+        scope.launch {
+            try {
+                // Tambahkan newline jika belum ada (untuk STM32)
+                val dataToSend = if (data.endsWith("\n")) data else "$data\n"
+
+                outputStream?.write(dataToSend.toByteArray())
+                outputStream?.flush()
+
+                Log.d(TAG, "Sent: $data")
+            } catch (e: IOException) {
+                Log.e(TAG, "Send error: ${e.message}", e)
+                withContext(Dispatchers.Main) {
+                    onError?.invoke("Gagal kirim: ${e.message}")
+                }
+            }
+        }
+    }
+
+    /**
+     * Disconnect dari Bluetooth
+     */
     fun disconnect() {
-        readJob?.cancel()
+        isReading = false
+
         try {
+            readThread?.interrupt()
+            readThread = null
+
             inputStream?.close()
             outputStream?.close()
             bluetoothSocket?.close()
-        } catch (e: IOException) {
-            Log.e("BluetoothHelper", "Error closing: ${e.message}")
-        }
-        onStatusChange?.invoke("🔴 Disconnected")
-    }
 
-    fun send(data: String) {
-        try {
-            outputStream?.write((data + "\n").toByteArray())
-            Log.d("BluetoothHelper", "📤 Sent: $data")
+            inputStream = null
+            outputStream = null
+            bluetoothSocket = null
+
+            onStatusChange?.invoke("Disconnected")
+            Log.d(TAG, "Disconnected successfully")
+
         } catch (e: IOException) {
-            onStatusChange?.invoke("❌ Error sending: ${e.message}")
+            Log.e(TAG, "Disconnect error: ${e.message}", e)
         }
     }
 
-    private fun startReading() {
-        readJob = CoroutineScope(Dispatchers.IO).launch {
-            val buffer = ByteArray(1024)
-            try {
-                while (isActive && bluetoothSocket?.isConnected == true) {
-                    val bytes = inputStream?.read(buffer) ?: break
-                    if (bytes > 0) {
-                        val data = String(buffer, 0, bytes)
-                        withContext(Dispatchers.Main) {
-                            onDataReceived?.invoke(data)
-                        }
-                    }
-                }
-            } catch (e: IOException) {
-                withContext(Dispatchers.Main) {
-                    onStatusChange?.invoke("❌ Connection lost: ${e.message}")
-                }
-                disconnect()
-            }
-        }
+    /**
+     * Cek apakah sedang terkoneksi
+     */
+    fun isConnected(): Boolean {
+        return bluetoothSocket?.isConnected == true
     }
+
+    /**
+     * Get list paired devices (untuk UI picker)
+     */
+    @SuppressLint("MissingPermission")
+    fun getPairedDevices(): List<BluetoothDevice> {
+        if (!hasBluetoothPermission()) return emptyList()
+        return bluetoothAdapter?.bondedDevices?.toList() ?: emptyList()
+    }
+
+    /**
+     * Set target device by name
+     */
+    fun setTargetDevice(name: String, address: String? = null) {
+        targetDeviceName = name
+        targetDeviceAddress = address
+    }
+
+    /**
+     * Cleanup resources
+     */
+    fun cleanup() {
+        disconnect()
+        scope.cancel()
+    }
+}
+
+/**
+ * Extension function untuk kemudahan
+ */
+@RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+fun BluetoothDevice.getDisplayName(): String {
+    return this.name ?: this.address
 }
