@@ -182,7 +182,7 @@ fun RiwayatListItem(
                 modifier = Modifier.weight(2f),
                 fontWeight = FontWeight.Medium,
                 fontSize = 12.sp,
-                maxLines = 1
+                maxLines = 2
             )
             Spacer(modifier = Modifier.weight(0.2f))
 
