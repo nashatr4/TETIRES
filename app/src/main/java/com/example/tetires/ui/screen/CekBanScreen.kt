@@ -1,5 +1,6 @@
 package com.example.tetires.ui.screen
 
+import android.app.Application
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -11,148 +12,203 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.constraintlayout.compose.ConstraintLayout
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.tetires.R
-import com.example.tetires.ui.viewmodel.MainViewModel
 import com.example.tetires.data.model.PosisiBan
-
-
-enum class StatusPengecekan {
-    BelumDicek,
-    TidakAus,
-    Aus
-}
-
+import com.example.tetires.ui.viewmodel.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CekBanScreen(
     navController: NavController,
-    viewModel: MainViewModel,
-    idCek: Long
+    mainViewModel: MainViewModel,
+    busId: Long,
+    pengecekanId: Long
 ) {
-    var statusBan by remember {
-        mutableStateOf(
-            mapOf(
-                PosisiBan.DKI to StatusPengecekan.BelumDicek,
-                PosisiBan.DKA to StatusPengecekan.BelumDicek,
-                PosisiBan.BKI to StatusPengecekan.BelumDicek,
-                PosisiBan.BKA to StatusPengecekan.BelumDicek
-            )
-        )
-    }
+    val context = LocalContext.current.applicationContext as Application
+    val bluetoothVM: BluetoothSharedViewModel = viewModel(
+        factory = BluetoothSharedViewModelFactory(context)
+    )
 
-    // Untuk menampilkan pesan dari ViewModel
+    val cekBanState by bluetoothVM.cekBanState.collectAsState()
+    val scanResults by bluetoothVM.scanResults.collectAsState()
+    val statusMessage by bluetoothVM.statusMessage.collectAsState()
+    val dataCount by bluetoothVM.dataCount.collectAsState()
+    val isConnected by bluetoothVM.isConnected.collectAsState()
+
     val snackbarHostState = remember { SnackbarHostState() }
-    val message by viewModel.statusMessage.collectAsState(initial = "")
 
-    // Tampilkan snack bar ketika ada pesan
-    LaunchedEffect(message) {
-        if (!message.isNullOrEmpty()) {
-            snackbarHostState.showSnackbar(message ?: "")
-            viewModel.clearStatusMessage()
+    LaunchedEffect(statusMessage) {
+        statusMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            bluetoothVM.clearStatusMessage()
         }
     }
 
-
+    LaunchedEffect(Unit) {
+        bluetoothVM.enterCekBanMode(busId, pengecekanId)
+    }
 
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text("Cek Ban", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    IconButton(onClick = { navController.navigateUp() }) {
+                    IconButton(onClick = {
+                        bluetoothVM.resetCekBanContext()
+                        navController.navigateUp()
+                    }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
                     }
                 }
             )
         },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
-    ) { paddingValues ->
+    ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
-                .padding(horizontal = 16.dp, vertical = 24.dp),
+                .padding(padding)
+                .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            BusLayout(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight(0.7f),
-                statusBan = statusBan,
-                onTireClick = { posisi ->
-                    val currentStatus = statusBan[posisi]!!
-                    val nextStatus = when (currentStatus) {
-                        StatusPengecekan.BelumDicek -> StatusPengecekan.TidakAus
-                        StatusPengecekan.TidakAus -> StatusPengecekan.Aus
-                        StatusPengecekan.Aus -> StatusPengecekan.BelumDicek
-                    }
-                    statusBan = statusBan + (posisi to nextStatus)
+
+            StateIndicatorCard(
+                state = cekBanState,
+                isConnected = isConnected,
+                dataCount = dataCount
+            )
+
+            Spacer(Modifier.height(16.dp))
+
+            BusLayoutWithResults(
+                results = scanResults,
+                state = cekBanState,
+                onSelectPosition = { posisi ->
+                    bluetoothVM.selectPositionToScan(posisi)
                 }
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(Modifier.height(16.dp))
 
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Button(
-                    onClick = {
-                        val belumDicek = statusBan.values.any { it == StatusPengecekan.BelumDicek }
-                        if (belumDicek) {
-                            viewModel.showStatusMessage(
-                                "Anda yakin untuk menyelesaikan pengecekan? Belum semua ban dicek"
-                            )
-                        } else {
-                            viewModel.completeCheck(idCek)
-                        }
+            ActionButtons(
+                state = cekBanState,
+                onStartScan = { bluetoothVM.startScan() },
+                onStop = { bluetoothVM.stopScan() },
+                onSaveAll = { bluetoothVM.saveAllResults() },
+                onRestart = { bluetoothVM.resetCekBanContext() },
+                onComplete = {
+                    navController.navigate("detailPengecekan/$pengecekanId") {
+                        popUpTo("cekBan/$pengecekanId") { inclusive = true }
+                    }
+                }
+            )
+        }
+    }
+}
+
+@Composable
+fun StateIndicatorCard(
+    state: CekBanState,
+    isConnected: Boolean,
+    dataCount: Int
+) {
+    val bgColor = when (state) {
+        CekBanState.IDLE -> Color(0xFFF3F4F6)
+        CekBanState.WAITING_SCAN -> Color(0xFFE0F2FE)
+        CekBanState.SCANNING -> Color(0xFFDDEAFE)
+        CekBanState.PROCESSING -> Color(0xFFE9D5FF)
+        CekBanState.RESULT_READY -> Color(0xFFD1FAE5)
+        CekBanState.SAVED -> Color(0xFFBBF7D0)
+        CekBanState.ERROR -> Color(0xFFFECACA)
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = bgColor),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(
+                    text = when (state) {
+                        CekBanState.IDLE -> "Pilih posisi ban"
+                        CekBanState.WAITING_SCAN -> "Siap melakukan scan"
+                        CekBanState.SCANNING -> "Sedang membaca data sensor"
+                        CekBanState.PROCESSING -> "Memproses data..."
+                        CekBanState.RESULT_READY -> "Hasil scan tersedia"
+                        CekBanState.SAVED -> "Data tersimpan"
+                        CekBanState.ERROR -> "Terjadi error"
                     },
-                    modifier = Modifier.size(width = 250.dp, height = 56.dp),
-                    shape = RoundedCornerShape(50.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3949A3))
-                ) {
-                    Text("Selesai", color = Color.White)
-                }
+                    fontWeight = FontWeight.Bold
+                )
 
-                Button(
-                    onClick = { navController.navigate("detailPengecekan/$idCek") },
-                    modifier = Modifier.size(width = 250.dp, height = 56.dp),
-                    shape = RoundedCornerShape(50.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3949A3))
-                ) {
-                    Text("Detail Pengecekan", color = Color.White)
-                }
+                Text(
+                    text = when (state) {
+                        CekBanState.SCANNING -> "$dataCount data diterima"
+                        CekBanState.PROCESSING -> "Python sedang mengolah..."
+                        CekBanState.SAVED -> "Semua disimpan di database"
+                        else -> if (!isConnected) "Bluetooth belum terhubung" else "Sistem siap"
+                    },
+                    fontSize = 12.sp,
+                    color = Color.Gray
+                )
+            }
+
+            when (state) {
+                CekBanState.SCANNING,
+                CekBanState.PROCESSING ->
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(32.dp),
+                        color = Color(0xFF3949A3)
+                    )
+
+                CekBanState.RESULT_READY ->
+                    Icon(Icons.Default.CheckCircle, contentDescription = "OK", tint = Color(0xFF10B981), modifier = Modifier.size(32.dp))
+
+                CekBanState.ERROR ->
+                    Icon(Icons.Default.Cancel, contentDescription = "Error", tint = Color(0xFFEF4444), modifier = Modifier.size(32.dp))
+                else -> {}
             }
         }
     }
 }
 
-
 @Composable
-fun BusLayout(
-
-    modifier: Modifier = Modifier,
-    statusBan: Map<PosisiBan, StatusPengecekan>,
-    onTireClick: (PosisiBan) -> Unit
+fun BusLayoutWithResults(
+    results: Map<PosisiBan, TireScanResult>,
+    state: CekBanState,
+    onSelectPosition: (PosisiBan) -> Unit
 ) {
-    ConstraintLayout(modifier = modifier.fillMaxSize()) {
+    ConstraintLayout(
+        modifier = Modifier
+            .fillMaxWidth()
+            .fillMaxHeight(0.7f)   // ✅ bus besar seperti versi lama
+            .padding(vertical = 8.dp)
+    ) {
         val (busImage, iconDKI, iconDKA, iconBKI, iconBKA) = createRefs()
 
-        val topGuideline = createGuidelineFromTop(0.15f)
-        val bottomGuideline = createGuidelineFromBottom(0.15f)
-        val startGuideline = createGuidelineFromStart(0.1f)
-        val endGuideline = createGuidelineFromEnd(0.1f)
+        // ✅ Guideline presisi seperti UI lama
+        val topGuide = createGuidelineFromTop(0.15f)
+        val bottomGuide = createGuidelineFromBottom(0.15f)
+        val startGuide = createGuidelineFromStart(0.1f)
+        val endGuide = createGuidelineFromEnd(0.1f)
 
+        // ✅ BUS BESAR & PROPOSIONAL (lebih bagus dari versi baru)
         Image(
             painter = painterResource(id = R.drawable.buscekban),
             contentDescription = "Bus",
@@ -168,61 +224,188 @@ fun BusLayout(
                 }
         )
 
-        StatusIcon(
+        // ✅ Depan Kiri (DKI)
+        ResultIcon(
             modifier = Modifier.constrainAs(iconDKI) {
-                top.linkTo(topGuideline)
-                start.linkTo(startGuideline)
+                top.linkTo(topGuide, margin = -10.dp)
+                start.linkTo(startGuide, margin = -4.dp)
             },
-            status = statusBan.getValue(PosisiBan.DKI),
-            onClick = { onTireClick(PosisiBan.DKI) }
+            label = "DKI",
+            state = state,
+            result = results[PosisiBan.DKI],
+            onClick = { onSelectPosition(PosisiBan.DKI) }
         )
 
-        StatusIcon(
+        // ✅ Depan Kanan (DKA)
+        ResultIcon(
             modifier = Modifier.constrainAs(iconDKA) {
-                top.linkTo(topGuideline)
-                end.linkTo(endGuideline)
+                top.linkTo(topGuide, margin = -10.dp)
+                end.linkTo(endGuide, margin = -4.dp)
             },
-            status = statusBan.getValue(PosisiBan.DKA),
-            onClick = { onTireClick(PosisiBan.DKA) }
+            label = "DKA",
+            state = state,
+            result = results[PosisiBan.DKA],
+            onClick = { onSelectPosition(PosisiBan.DKA) }
         )
 
-        StatusIcon(
+        // ✅ Belakang Kiri (BKI)
+        ResultIcon(
             modifier = Modifier.constrainAs(iconBKI) {
-                bottom.linkTo(bottomGuideline)
-                start.linkTo(startGuideline)
+                bottom.linkTo(bottomGuide, margin = -10.dp)
+                start.linkTo(startGuide, margin = -4.dp)
             },
-            status = statusBan.getValue(PosisiBan.BKI),
-            onClick = { onTireClick(PosisiBan.BKI) }
+            label = "BKI",
+            state = state,
+            result = results[PosisiBan.BKI],
+            onClick = { onSelectPosition(PosisiBan.BKI) }
         )
 
-        StatusIcon(
+        // ✅ Belakang Kanan (BKA)
+        ResultIcon(
             modifier = Modifier.constrainAs(iconBKA) {
-                bottom.linkTo(bottomGuideline)
-                end.linkTo(endGuideline)
+                bottom.linkTo(bottomGuide, margin = -10.dp)
+                end.linkTo(endGuide, margin = -4.dp)
             },
-            status = statusBan.getValue(PosisiBan.BKA),
-            onClick = { onTireClick(PosisiBan.BKA) }
+            label = "BKA",
+            state = state,
+            result = results[PosisiBan.BKA],
+            onClick = { onSelectPosition(PosisiBan.BKA) }
         )
     }
 }
 
+
 @Composable
-fun StatusIcon(
-    modifier: Modifier = Modifier,
-    status: StatusPengecekan,
+fun ResultIcon(
+    modifier: Modifier,
+    label: String,
+    state: CekBanState,
+    result: TireScanResult?,
     onClick: () -> Unit
 ) {
-    IconButton(onClick = onClick, modifier = modifier) {
-        val (icon, color) = when (status) {
-            StatusPengecekan.BelumDicek -> Icons.Default.AddCircle to Color.Black
-            StatusPengecekan.TidakAus -> Icons.Default.CheckCircle to Color(0xFF10B981)
-            StatusPengecekan.Aus -> Icons.Default.Cancel to Color(0xFFEF4444)
+    Column(
+        modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+
+        val (icon, color) = when {
+            result != null -> {
+                if (result.isWorn) Icons.Default.Cancel to Color(0xFFEF4444)
+                else Icons.Default.CheckCircle to Color(0xFF10B981)
+            }
+            state == CekBanState.SCANNING || state == CekBanState.PROCESSING ->
+                Icons.Default.AddCircle to Color.Gray
+            else ->
+                Icons.Default.AddCircle to Color.LightGray
         }
-        Icon(
-            imageVector = icon,
-            contentDescription = "Status Ban",
-            tint = color,
-            modifier = Modifier.size(40.dp)
-        )
+
+        // ✅ Bigger icon (64.dp -> lebih mudah ditekan, mirip UI lama)
+        IconButton(
+            onClick = onClick,
+            modifier = Modifier.size(70.dp)
+        ) {
+            Icon(
+                icon,
+                contentDescription = label,
+                tint = color,
+                modifier = Modifier.size(64.dp)
+            )
+        }
+
+        // ✅ Angka tebal lebih dekat ke ikon
+        result?.let {
+            Text(
+                "${"%.1f".format(it.thicknessMm)} mm",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = color
+            )
+        }
+    }
+}
+
+@Composable
+fun ActionButtons(
+    state: CekBanState,
+    onStartScan: () -> Unit,
+    onStop: () -> Unit,
+    onSaveAll: () -> Unit,
+    onRestart: () -> Unit,
+    onComplete: () -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+
+        when (state) {
+
+            CekBanState.WAITING_SCAN -> {
+                Button(
+                    onClick = onStartScan,
+                    modifier = Modifier.size(250.dp, 56.dp),
+                    shape = RoundedCornerShape(50.dp)
+                ) {
+                    Text("Mulai Scan", fontWeight = FontWeight.Bold)
+                }
+            }
+
+            CekBanState.SCANNING -> {
+                Button(
+                    onClick = onStop,
+                    modifier = Modifier.size(250.dp, 56.dp),
+                    shape = RoundedCornerShape(50.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                ) {
+                    Text("Stop & Proses", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+
+                Text("Atau tunggu auto-stop", fontSize = 12.sp, color = Color.Gray)
+            }
+
+            CekBanState.RESULT_READY -> {
+                Button(
+                    onClick = onSaveAll,
+                    modifier = Modifier.size(250.dp, 56.dp),
+                    shape = RoundedCornerShape(50.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981))
+                ) {
+                    Text("Simpan Semua", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            }
+
+            CekBanState.SAVED -> {
+                Button(
+                    onClick = onComplete,
+                    modifier = Modifier.size(250.dp, 56.dp),
+                    shape = RoundedCornerShape(50.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981))
+                ) {
+                    Text("Lihat Detail", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+
+                OutlinedButton(
+                    onClick = onRestart,
+                    modifier = Modifier.size(250.dp, 56.dp),
+                    shape = RoundedCornerShape(50.dp)
+                ) {
+                    Text("Cek Ulang")
+                }
+            }
+
+            CekBanState.ERROR -> {
+                Button(
+                    onClick = onRestart,
+                    modifier = Modifier.size(250.dp, 56.dp),
+                    shape = RoundedCornerShape(50.dp)
+                ) {
+                    Text("Coba Lagi", fontWeight = FontWeight.Bold)
+                }
+            }
+
+            else -> {}
+        }
     }
 }
