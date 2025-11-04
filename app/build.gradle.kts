@@ -60,9 +60,9 @@ chaquopy {
         pip {
             install("numpy")
             install("pandas")
-            install("scipy")
         }
     }
+
 
     productFlavors {
         getByName("py310") {
@@ -78,6 +78,7 @@ dependencies {
     implementation(libs.androidx.compose.runtime.livedata)
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.foundation)
+    implementation(libs.androidx.compose.runtime)
     debugImplementation(libs.androidx.compose.ui.tooling)
     val navVersion = "2.9.4"
     val roomVersion = "2.6.1" // atau versi terbaru
