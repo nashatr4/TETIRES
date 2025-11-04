@@ -364,17 +364,23 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
             return
         }
 
+        val posLabel = currentPosisi?.label ?: "Unknown"
+        addToTerminal("✓ Hasil ${posLabel} dikonfirmasi\n")
+
         // Reset untuk scan berikutnya
         currentPosisi = null
-        _cekBanState.value = CekBanState.IDLE
-        _statusMessage.value = "Hasil disimpan. Pilih posisi ban berikutnya."
+        scanBuffer.clear()
+        _dataCount.value = 0
 
-        addToTerminal("✓ Hasil ${currentPosisi?.label} dikonfirmasi")
+        // ✅ Kembali ke IDLE agar user bisa pilih posisi lain
+        _cekBanState.value = CekBanState.IDLE
+        _statusMessage.value = "Pilih posisi ban berikutnya atau simpan semua"
     }
 
     /**
      * Simpan semua hasil scan ke database
      */
+
     fun saveAllResults() {
         val results = _scanResults.value
         if (results.isEmpty()) {
@@ -389,14 +395,21 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
 
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                // Ambil pengecekan
+                addToTerminal("\n=== SAVING TO DATABASE ===")
+                addToTerminal("Pengecekan ID: $currentPengecekanId")
+                addToTerminal("Results count: ${results.size}")
+
+                // ✅ 1. Ambil pengecekan yang ada
                 val pengecekan = pengecekanDao.getPengecekanById(currentPengecekanId!!)
                 if (pengecekan == null) {
                     addToTerminal("ERROR: Pengecekan tidak ditemukan")
+                    withContext(Dispatchers.Main) {
+                        _statusMessage.value = "Error: Data pengecekan tidak ditemukan"
+                    }
                     return@launch
                 }
 
-                // Update Pengecekan (status boolean)
+                // ✅ 2. Update status di Pengecekan (ringkasan boolean)
                 val updatedPengecekan = pengecekan.copy(
                     statusDka = results[PosisiBan.DKA]?.isWorn,
                     statusDki = results[PosisiBan.DKI]?.isWorn,
@@ -404,25 +417,43 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
                     statusBki = results[PosisiBan.BKI]?.isWorn
                 )
                 pengecekanDao.updatePengecekan(updatedPengecekan)
+                addToTerminal("✓ Pengecekan updated")
 
-                // Simpan DetailBan
-                val existingDetail = detailBanDao.getDetailsByCheckId(currentPengecekanId!!).firstOrNull()
+                // ✅ 3. Ambil atau buat DetailBan
+                val existingDetails = detailBanDao.getDetailsByCheckId(currentPengecekanId!!)
+                val existingDetail = existingDetails.firstOrNull()
 
                 val detailBan = DetailBan(
                     idDetail = existingDetail?.idDetail ?: 0L,
                     pengecekanId = currentPengecekanId!!,
+                    // ✅ Simpan ukuran (thickness_mm dari Python)
                     ukDka = results[PosisiBan.DKA]?.thicknessMm,
                     ukDki = results[PosisiBan.DKI]?.thicknessMm,
                     ukBka = results[PosisiBan.BKA]?.thicknessMm,
                     ukBki = results[PosisiBan.BKI]?.thicknessMm,
+                    // ✅ Simpan status aus (redundant untuk query cepat)
                     statusDka = results[PosisiBan.DKA]?.isWorn,
                     statusDki = results[PosisiBan.DKI]?.isWorn,
                     statusBka = results[PosisiBan.BKA]?.isWorn,
                     statusBki = results[PosisiBan.BKI]?.isWorn
                 )
 
-                detailBanDao.insertDetailBan(detailBan)
-                addToTerminal("✓ Data berhasil disimpan ke database")
+                // ✅ 4. Insert atau update DetailBan
+                if (existingDetail == null) {
+                    detailBanDao.insertDetailBan(detailBan)
+                    addToTerminal("✓ DetailBan inserted")
+                } else {
+                    detailBanDao.updateDetailBan(detailBan)
+                    addToTerminal("✓ DetailBan updated")
+                }
+
+                // ✅ 5. Log hasil
+                addToTerminal("--- SAVED DATA ---")
+                results.forEach { (posisi, result) ->
+                    val status = if (result.isWorn) "AUS" else "OK"
+                    addToTerminal("${posisi.label}: ${result.thicknessMm} mm ($status)")
+                }
+                addToTerminal("✓ Database save complete")
 
                 withContext(Dispatchers.Main) {
                     _cekBanState.value = CekBanState.SAVED
@@ -432,13 +463,17 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
             } catch (e: Exception) {
                 Log.e(TAG, "Error saving: ${e.message}", e)
                 addToTerminal("ERROR DB: ${e.message}")
+                e.printStackTrace()
 
                 withContext(Dispatchers.Main) {
                     _statusMessage.value = "Gagal menyimpan: ${e.message}"
+                    _cekBanState.value = CekBanState.ERROR
                 }
             }
         }
     }
+
+
 
     /**
      * Reset context CekBan (keluar dari mode CekBan)
@@ -463,6 +498,7 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
         _terminalText.value = ""
     }
 
+
     fun clearStatusMessage() {
         _statusMessage.value = null
     }
@@ -472,6 +508,8 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
         bluetoothHelper.disconnect()
     }
 }
+
+
 
 /**
  * Data class untuk hasil scan satu posisi ban
