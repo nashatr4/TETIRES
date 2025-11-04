@@ -19,10 +19,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -32,10 +32,11 @@ import com.example.tetires.R
 import com.example.tetires.data.local.entity.Bus
 import com.example.tetires.data.model.PengecekanRingkas
 import com.example.tetires.ui.viewmodel.MainViewModel
-import java.text.SimpleDateFormat
-import java.util.*
 
 // ========================== SCREEN ==========================
+// Update bagian Scaffold di RiwayatScreen
+// ✅ Update bagian FAB di RiwayatScreen.kt
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RiwayatScreen(
@@ -43,7 +44,8 @@ fun RiwayatScreen(
     viewModel: MainViewModel,
     busId: Long?
 ) {
-    // Ambil data bus dan pengecekan
+    val context = LocalContext.current
+
     val busData by produceState<Bus?>(initialValue = null, busId) {
         value = busId?.let { viewModel.getBusById(it) }
     }
@@ -53,6 +55,9 @@ fun RiwayatScreen(
     }
 
     val items by viewModel.currentBusChecks.collectAsState()
+
+    // ✅ State untuk dropdown menu
+    var showDownloadMenu by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -69,6 +74,64 @@ fun RiwayatScreen(
                     navigationIconContentColor = Color.Black
                 )
             )
+        },
+        // ✅ FAB dengan 2 pilihan download
+        floatingActionButton = {
+            if (items.isNotEmpty()) {
+                Box {
+                    FloatingActionButton(
+                        onClick = {
+                            // ✅ METHOD 1: Langsung save & open (lebih simple)
+                            viewModel.downloadHistory(
+                                context = context,
+                                logs = items,
+                                busName = busData?.namaBus
+                            )
+
+                            // ✅ METHOD 2: Show menu untuk pilih (uncomment jika mau pakai)
+                            // showDownloadMenu = true
+                        },
+                        shape = CircleShape,
+                        containerColor = Color(0xFF3A5FCD)
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.download),
+                            contentDescription = "Download Riwayat",
+                            tint = Color.White,
+                            modifier = Modifier.size(30.dp)
+                        )
+                    }
+
+                    // ✅ Dropdown menu (optional, untuk kasih pilihan ke user)
+                    DropdownMenu(
+                        expanded = showDownloadMenu,
+                        onDismissRequest = { showDownloadMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Simpan & Buka") },
+                            onClick = {
+                                showDownloadMenu = false
+                                viewModel.downloadHistory(
+                                    context = context,
+                                    logs = items,
+                                    busName = busData?.namaBus
+                                )
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Bagikan / Export") },
+                            onClick = {
+                                showDownloadMenu = false
+                                viewModel.downloadAndShareHistory(
+                                    context = context,
+                                    logs = items,
+                                    busName = busData?.namaBus
+                                )
+                            }
+                        )
+                    }
+                }
+            }
         }
     ) { padding ->
         Column(
@@ -88,7 +151,6 @@ fun RiwayatScreen(
         }
     }
 
-    // Observer untuk navigasi ke cek ban
     val startCheckEvent by viewModel.startCheckEvent.observeAsState()
     LaunchedEffect(startCheckEvent) {
         startCheckEvent?.getContentIfNotHandled()?.let { checkId ->
