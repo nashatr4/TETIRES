@@ -232,7 +232,7 @@ class MainViewModel(
             statusDki = dki,
             statusBka = bka,
             statusBki = bki,
-            summaryStatus = if (dka || dki || bka || bki) "Aus" else "Aman"
+            summaryStatus = TireStatusHelper.summaryStatus(statusDka, statusDki, statusBka, statusBki)
         )
     }
 
