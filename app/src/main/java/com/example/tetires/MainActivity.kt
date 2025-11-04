@@ -64,7 +64,7 @@ class MainActivity : ComponentActivity() {
                 ) {
                     val navController = rememberNavController()
                     val mainViewModel: MainViewModel = viewModel(
-                        factory = MainViewModelFactory(repository)
+                        factory = MainViewModelFactory(application, repository)
                     )
 
                     NavHost(
