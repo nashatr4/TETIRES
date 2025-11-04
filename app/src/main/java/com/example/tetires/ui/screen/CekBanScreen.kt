@@ -18,6 +18,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.constraintlayout.compose.ConstraintLayout
@@ -342,7 +343,18 @@ fun ActionButtons(
 
         when (state) {
 
+            CekBanState.IDLE -> {
+                // ✅ User belum pilih posisi
+                Text(
+                    "👆 Pilih posisi ban untuk mulai scan",
+                    fontSize = 14.sp,
+                    color = Color.Gray,
+                    textAlign = TextAlign.Center
+                )
+            }
+
             CekBanState.WAITING_SCAN -> {
+                // ✅ User sudah pilih posisi, siap scan
                 Button(
                     onClick = onStartScan,
                     modifier = Modifier.size(250.dp, 56.dp),
@@ -353,6 +365,7 @@ fun ActionButtons(
             }
 
             CekBanState.SCANNING -> {
+                // ✅ Sedang scan
                 Button(
                     onClick = onStop,
                     modifier = Modifier.size(250.dp, 56.dp),
@@ -362,26 +375,65 @@ fun ActionButtons(
                     Text("Stop & Proses", color = Color.White, fontWeight = FontWeight.Bold)
                 }
 
-                Text("Atau tunggu auto-stop", fontSize = 12.sp, color = Color.Gray)
+                Text("Atau tunggu auto-stop (500 data)", fontSize = 12.sp, color = Color.Gray)
             }
 
             CekBanState.RESULT_READY -> {
+                // ✅ Hasil scan ready, user bisa:
+                // 1. Pilih posisi lain untuk scan lagi
+                // 2. Atau langsung simpan semua
+
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        "Hasil tersimpan sementara",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF10B981)
+                    )
+                    Text(
+                        "Pilih posisi lain atau simpan semua",
+                        fontSize = 12.sp,
+                        color = Color.Gray
+                    )
+                }
+
+                Spacer(Modifier.height(8.dp))
+
                 Button(
                     onClick = onSaveAll,
                     modifier = Modifier.size(250.dp, 56.dp),
                     shape = RoundedCornerShape(50.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981))
                 ) {
-                    Text("Simpan Semua", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text("Simpan Semua Hasil", color = Color.White, fontWeight = FontWeight.Bold)
                 }
             }
 
             CekBanState.SAVED -> {
+                // ✅ Data sudah di database
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        Icons.Default.CheckCircle,
+                        contentDescription = "Success",
+                        tint = Color(0xFF10B981),
+                        modifier = Modifier.size(48.dp)
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Data berhasil disimpan!",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF10B981)
+                    )
+                }
+
+                Spacer(Modifier.height(16.dp))
+
                 Button(
                     onClick = onComplete,
                     modifier = Modifier.size(250.dp, 56.dp),
                     shape = RoundedCornerShape(50.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981))
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3949A3))
                 ) {
                     Text("Lihat Detail", color = Color.White, fontWeight = FontWeight.Bold)
                 }
@@ -391,11 +443,30 @@ fun ActionButtons(
                     modifier = Modifier.size(250.dp, 56.dp),
                     shape = RoundedCornerShape(50.dp)
                 ) {
-                    Text("Cek Ulang")
+                    Text("Scan Bus Lain")
                 }
             }
 
             CekBanState.ERROR -> {
+                // ✅ Error occurred
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        Icons.Default.Cancel,
+                        contentDescription = "Error",
+                        tint = Color(0xFFEF4444),
+                        modifier = Modifier.size(48.dp)
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Terjadi kesalahan",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFEF4444)
+                    )
+                }
+
+                Spacer(Modifier.height(16.dp))
+
                 Button(
                     onClick = onRestart,
                     modifier = Modifier.size(250.dp, 56.dp),
