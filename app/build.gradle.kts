@@ -79,6 +79,7 @@ dependencies {
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.foundation)
     implementation(libs.androidx.compose.runtime)
+    implementation(libs.androidx.media3.exoplayer)
     debugImplementation(libs.androidx.compose.ui.tooling)
     val navVersion = "2.9.4"
     val roomVersion = "2.6.1" // atau versi terbaru
