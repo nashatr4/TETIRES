@@ -1,18 +1,23 @@
 package com.example.tetires.ui.viewmodel
 
+import android.app.Application
+import android.content.Context
 import android.util.Log
+import android.widget.Toast
 import androidx.lifecycle.*
 import com.example.tetires.data.local.entity.Bus
 import com.example.tetires.data.local.entity.PengecekanWithBus
 import com.example.tetires.data.model.*
 import com.example.tetires.data.repository.TetiresRepository
+import com.example.tetires.util.DownloadHelper
 import com.example.tetires.util.TireStatusHelper
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import java.util.*
 
 data class Event<out T>(private val content: T) {
     private var hasBeenHandled = false
@@ -23,10 +28,10 @@ data class Event<out T>(private val content: T) {
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class MainViewModel(
+    application: Application,
     private val repository: TetiresRepository
-) : ViewModel() {
+) : AndroidViewModel(application) {
 
-    // ========= STATEFLOW =========
     private val _buses = MutableStateFlow<List<Bus>>(emptyList())
     val buses: StateFlow<List<Bus>> = _buses.asStateFlow()
 
@@ -49,10 +54,7 @@ class MainViewModel(
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
-    // 🔥 NEW: Status message untuk feedback ke user
     private val _statusMessage = MutableStateFlow<String?>(null)
-
-    // public untuk observe dari UI
     val statusMessage: StateFlow<String?> = _statusMessage
 
     fun showStatusMessage(message: String) {
@@ -63,7 +65,6 @@ class MainViewModel(
         _statusMessage.value = ""
     }
 
-    // ========= LIVE DATA (One-time event) =========
     private val _startCheckEvent = MutableLiveData<Event<Long>>()
     val startCheckEvent: LiveData<Event<Long>> = _startCheckEvent
 
@@ -73,19 +74,22 @@ class MainViewModel(
     private val _busAddedEvent = MutableLiveData<Event<Long>>()
     val busAddedEvent: LiveData<Event<Long>> = _busAddedEvent
 
-    init { loadBuses() }
-
-    // ========= BUS =========
-    private fun loadBuses() {
-        viewModelScope.launch { repository.getAllBuses().collect { _buses.value = it } }
+    init {
+        loadBuses()
     }
 
-    fun completeCheck(idCek: Long){
+    private fun loadBuses() {
+        viewModelScope.launch {
+            repository.getAllBuses().collect { _buses.value = it }
+        }
+    }
+
+    fun completeCheck(idCek: Long) {
         viewModelScope.launch {
             try {
                 repository.completeCheck(idCek)
                 _statusMessage.value = "Pengecekan selesai!"
-            } catch(e: Exception){
+            } catch (e: Exception) {
                 _statusMessage.value = "Gagal menyelesaikan pengecekan: ${e.message}"
             }
         }
@@ -143,7 +147,7 @@ class MainViewModel(
             val result = repository.deletePengecekanById(idCek)
             result.fold(
                 onSuccess = {
-                    loadLast10Checks(busId) // refresh list cek untuk bus ini
+                    loadLast10Checks(busId)
                 },
                 onFailure = { e ->
                     _errorMessage.value = "Gagal menghapus pengecekan: ${e.message}"
@@ -152,7 +156,6 @@ class MainViewModel(
         }
     }
 
-    // ========= PENGECEKAN =========
     fun startCheck(busId: Long) {
         viewModelScope.launch {
             _isLoading.value = true
@@ -166,12 +169,8 @@ class MainViewModel(
         }
     }
 
-    /**
-     * 🔥 UPDATE: Tidak perlu parameter isAus lagi.
-     * Status ditentukan OTOMATIS dari ukuran (threshold 1.6mm).
-     */
-    fun updateCheckPartial(idCek: Long, posisi: PosisiBan, ukuran: Float){
-        if(!TireStatusHelper.isValidUkuran(ukuran)){
+    fun updateCheckPartial(idCek: Long, posisi: PosisiBan, ukuran: Float) {
+        if (!TireStatusHelper.isValidUkuran(ukuran)) {
             _errorMessage.value = "Ukuran tidak valid: $ukuran mm"
             return
         }
@@ -183,7 +182,7 @@ class MainViewModel(
                 _statusMessage.value = result.statusMessage
                 _updateCompleteEvent.value = Event(result.complete)
                 _errorMessage.value = null
-            } catch (e: Exception){
+            } catch (e: Exception) {
                 _errorMessage.value = "Gagal update pengecekan: ${e.message}"
                 _statusMessage.value = null
             }
@@ -191,7 +190,6 @@ class MainViewModel(
         }
     }
 
-    // ========= LOG / SEARCH =========
     fun searchLogs(query: String? = null, startDate: Long? = null, endDate: Long? = null) {
         _logQuery.value = LogQuery(
             searchQuery = query?.takeIf { it.isNotBlank() },
@@ -200,9 +198,10 @@ class MainViewModel(
         )
     }
 
-    fun clearSearch() { _logQuery.value = LogQuery() }
+    fun clearSearch() {
+        _logQuery.value = LogQuery()
+    }
 
-    // ========= RIWAYAT =========
     fun loadLast10Checks(busId: Long?) {
         if (busId == null) return
         viewModelScope.launch {
@@ -216,11 +215,6 @@ class MainViewModel(
         val dateFormat = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale("id", "ID"))
         val readableDate = dateFormat.format(Date(tanggalMs))
 
-        val dka = statusDka == true
-        val dki = statusDki == true
-        val bka = statusBka == true
-        val bki = statusBki == true
-
         return PengecekanRingkas(
             idCek = idPengecekan,
             tanggalCek = tanggalMs,
@@ -228,22 +222,20 @@ class MainViewModel(
             waktuReadable = readableDate,
             namaBus = namaBus,
             platNomor = platNomor,
-            statusDka = dka,
-            statusDki = dki,
-            statusBka = bka,
-            statusBki = bki,
+            statusDka = statusDka == true,
+            statusDki = statusDki == true,
+            statusBka = statusBka == true,
+            statusBki = statusBki == true,
             summaryStatus = TireStatusHelper.summaryStatus(statusDka, statusDki, statusBka, statusBki)
         )
     }
 
-    // ========= DETAIL =========
     fun loadCheckDetail(idCek: Long) {
         viewModelScope.launch {
             _isLoading.value = true
             try {
                 _checkDetail.value = repository.getCheckDetail(idCek)
-            }
-            catch (e: Exception) {
+            } catch (e: Exception) {
                 _errorMessage.value = "Gagal memuat detail: ${e.message}"
             }
             _isLoading.value = false
@@ -254,6 +246,48 @@ class MainViewModel(
         _errorMessage.value = null
         _statusMessage.value = null
     }
+
+    // ===== DOWNLOAD FUNCTIONS =====
+
+    /**
+     * Download riwayat pengecekan sebagai CSV file dan langsung buka
+     * Method 1: Save ke Downloads + Auto Open
+     */
+    fun downloadHistory(context: Context, logs: List<PengecekanRingkas>, busName: String? = null) {
+        DownloadHelper.downloadHistoryAsCSV(context, logs, busName)
+    }
+
+    /**
+     * Alternative Method: Share CSV (Lebih reliable karena tidak perlu storage permission)
+     * User bisa pilih: Save ke Drive, Buka dengan Excel, Share via WhatsApp, dll
+     */
+    fun downloadAndShareHistory(context: Context, logs: List<PengecekanRingkas>, busName: String? = null) {
+        DownloadHelper.downloadAndShareCSV(context, logs, busName)
+    }
+
+    /**
+     * Download riwayat detail (dengan format lengkap)
+     * Include semua informasi status ban per posisi
+     */
+    fun downloadDetailedHistory(context: Context, busId: Long) {
+        viewModelScope.launch {
+            try {
+                val logs = repository.getLast10Checks(busId).first()
+                val bus = repository.getBusById(busId)
+                DownloadHelper.downloadDetailedHistory(context, logs, bus?.namaBus)
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(
+                        context,
+                        "Gagal download: ${e.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+        }
+    }
+
+    // ===== TEST FUNCTION =====
 
     fun testUpdateFlow() {
         viewModelScope.launch {
@@ -269,5 +303,4 @@ class MainViewModel(
             }
         }
     }
-
 }
