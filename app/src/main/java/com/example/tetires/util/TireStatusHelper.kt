@@ -1,6 +1,6 @@
 package com.example.tetires.util
 
-import com.example.tetires.ui.screen.StatusPengecekan
+import com.example.tetires.model.StatusPengecekan
 
 /**
  * Helper object untuk menentukan status ban berdasarkan ukuran tapak.
@@ -62,4 +62,19 @@ object TireStatusHelper {
             else -> StatusPengecekan.TidakAus
         }
     }
+
+    fun summaryStatus(
+        dka: Boolean?, dki: Boolean?,
+        bka: Boolean?, bki: Boolean?
+    ): String {
+        val anyAus = listOf(dka, dki, bka, bki).any { it == true }
+        val allNotAus = listOf(dka, dki, bka, bki).all { it == false }
+
+        return when {
+            anyAus -> "Aus"
+            allNotAus -> "Tidak Aus"
+            else -> "Belum Selesai"
+        }
+    }
+
 }
