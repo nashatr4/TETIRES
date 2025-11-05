@@ -64,17 +64,42 @@ object TireStatusHelper {
     }
 
     fun summaryStatus(
-        dka: Boolean?, dki: Boolean?,
-        bka: Boolean?, bki: Boolean?
+        dka: Boolean?,
+        dki: Boolean?,
+        bka: Boolean?,
+        bki: Boolean?
     ): String {
-        val anyAus = listOf(dka, dki, bka, bki).any { it == true }
-        val allNotAus = listOf(dka, dki, bka, bki).all { it == false }
+        val list = listOf(dka, dki, bka, bki)
 
-        return when {
-            anyAus -> "Aus"
-            allNotAus -> "Tidak Aus"
-            else -> "Belum Selesai"
+        // ⏳ Jika ada yang null → belum selesai
+        if (list.any { it == null }) {
+            return "Belum Selesai"
+        }
+
+        // ❌ Jika ada minimal 1 ban aus (true) → AUS
+        if (list.any { it == true }) {
+            return "Aus"
+        }
+
+        // ✅ Jika SEMUA ban tidak aus (semua false) → TIDAK AUS
+        return "Tidak Aus"
+    }
+    fun getStatusColor(isAus: Boolean?): Long {
+        return when (isAus) {
+            true -> 0xFFEF4444  // Merah
+            false -> 0xFF10B981 // Hijau
+            else -> 0xFF6B7280  // Abu-abu
         }
     }
 
+    /**
+     * Get teks status
+     */
+    fun getStatusText(isAus: Boolean?): String {
+        return when (isAus) {
+            true -> "Aus"
+            false -> "Tidak Aus"
+            else -> "Belum Dicek"
+        }
+    }
 }
