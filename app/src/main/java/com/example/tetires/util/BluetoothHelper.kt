@@ -28,6 +28,8 @@ import java.util.*
 class BluetoothHelper(private val context: Context) {
 
     private val TAG = "BluetoothHelper"
+    private val dataBuffer = StringBuilder()
+
 
     // Bluetooth components
     private var bluetoothAdapter: BluetoothAdapter? = null
@@ -176,21 +178,28 @@ class BluetoothHelper(private val context: Context) {
 
             while (isReading) {
                 try {
-                    // Baca data dari input stream
-                    bytes = inputStream?.read(buffer) ?: -1
-
+                    val bytes = inputStream?.read(buffer) ?: -1
                     if (bytes > 0) {
-                        val receivedData = String(buffer, 0, bytes).trim()
+                        val chunk = String(buffer, 0, bytes)
+                        dataBuffer.append(chunk)
 
-                        // Callback ke UI thread
-                        scope.launch(Dispatchers.Main) {
-                            onDataReceived?.invoke(receivedData)
+                        // Pisahkan per baris (\n)
+                        var lineEnd = dataBuffer.indexOf("\n")
+                        while (lineEnd >= 0) {
+                            val line = dataBuffer.substring(0, lineEnd).trim()
+                            dataBuffer.delete(0, lineEnd + 1)
+
+                            // Kirim line ke UI
+                            scope.launch(Dispatchers.Main) {
+                                onDataReceived?.invoke(line)
+                            }
+
+                            lineEnd = dataBuffer.indexOf("\n")
                         }
                     }
                 } catch (e: IOException) {
                     Log.e(TAG, "Read error: ${e.message}")
                     isReading = false
-
                     scope.launch(Dispatchers.Main) {
                         onStatusChange?.invoke("Connection lost")
                         disconnect()
