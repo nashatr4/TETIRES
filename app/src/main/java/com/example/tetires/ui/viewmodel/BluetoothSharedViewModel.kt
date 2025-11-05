@@ -476,8 +476,14 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
 
     // ===== UTILITY FUNCTIONS =====
 
+    private fun getCurrentTimestamp(): String {
+        val sdf = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
+        return sdf.format(java.util.Date())
+    }
+
     fun addToTerminal(text: String) {
-        _terminalText.value += "\n$text"
+        val timestamp = getCurrentTimestamp()
+        _terminalText.value += "\n[$timestamp] $text"
     }
 
     fun clearTerminal() {
