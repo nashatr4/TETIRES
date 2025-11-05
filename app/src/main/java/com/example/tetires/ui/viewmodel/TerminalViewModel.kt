@@ -13,7 +13,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.text.SimpleDateFormat
 import java.util.Locale
+import java.util.Date
 
 class TerminalViewModel(private val context: Context) : ViewModel() {
 
@@ -86,6 +88,11 @@ class TerminalViewModel(private val context: Context) : ViewModel() {
         }
     }
 
+    private fun getCurrentTimestamp(): String {
+        val sdf = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+        return sdf.format(Date())
+    }
+
     fun connectBluetooth() {
         // Kosongkan buffer dan log lama setiap kali koneksi baru
         clearLogs()
@@ -104,7 +111,8 @@ class TerminalViewModel(private val context: Context) : ViewModel() {
     }
 
     fun addLog(text: String) {
-        terminalText.value += "\n$text"
+        val timestamp = getCurrentTimestamp()
+        terminalText.value += "\n[$timestamp] $text"
     }
 
     fun clearLogs() {
