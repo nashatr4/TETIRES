@@ -55,8 +55,7 @@ class TerminalViewModel(private val context: Context) : ViewModel() {
 
         addLog("PYTHON: Memulai pemrosesan batch... (ini mungkin butuh beberapa detik)")
 
-        // Salin buffer agar aman dari perubahan saat proses
-        // dan bersihkan buffer lama
+        // Salin buffer agar aman dari perubahan saat proses dan bersihkan buffer lama
         val dataToProcess = ArrayList(lineBuffer)
         lineBuffer.clear()
 
