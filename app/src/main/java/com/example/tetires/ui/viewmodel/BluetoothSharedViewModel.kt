@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import kotlinx.coroutines.delay
 
 /**
  * State untuk proses CekBan
@@ -47,8 +48,16 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
 
     // Database
     private val database = AppDatabase.getInstance(application)
+    private val busDao = database.busDao()               // <--- tambahin ini
     private val pengecekanDao = database.pengecekanDao()
     private val detailBanDao = database.detailBanDao()
+
+    // Repository (pastikan constructor TetiresRepository menerima BusDao, PengecekanDao, DetailBanDao)
+    private val repository = com.example.tetires.data.repository.TetiresRepository(
+        busDao,
+        pengecekanDao,
+        detailBanDao
+    )
 
     // Bluetooth Helper (single instance)
     private val bluetoothHelper = BluetoothHelper(application)
@@ -111,9 +120,8 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
                 scanBuffer.add(rawData)
                 _dataCount.value = scanBuffer.size
 
-                // Auto-stop jika data cukup (misal 500-1000 baris untuk 1 posisi)
-                if (scanBuffer.size >= 500) {
-                    Log.d(TAG, "Buffer cukup (${scanBuffer.size} baris), auto-processing...")
+                if (scanBuffer.size == 1110) {
+                    Log.d(TAG, "Buffer penuh (1110 data), langsung proses!")
                     processCurrentScan()
                 }
             }
@@ -266,92 +274,67 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
     /**
      * Process data yang sudah di-scan untuk posisi saat ini
      */
-    private fun processCurrentScan() {
-        if (scanBuffer.isEmpty()) {
-            _statusMessage.value = "Tidak ada data untuk diproses"
-            _cekBanState.value = CekBanState.ERROR
-            return
-        }
-
-        if (currentPosisi == null) {
-            _statusMessage.value = "Error: Posisi tidak valid"
-            _cekBanState.value = CekBanState.ERROR
-            return
-        }
-
-        _cekBanState.value = CekBanState.PROCESSING
-        _statusMessage.value = "Memproses ${scanBuffer.size} data untuk ${currentPosisi!!.label}..."
-
-        viewModelScope.launch(Dispatchers.Default) {
+    fun processCurrentScan() {
+        viewModelScope.launch(Dispatchers.IO) {
             try {
-                addToTerminal("\n=== PROCESSING ${currentPosisi!!.label} ===")
-                addToTerminal("Total lines: ${scanBuffer.size}")
+                // Gak perlu delay, langsung ambil snapshot buffer
+                val totalData = scanBuffer.size
+                Log.d("TETIRES", "Mulai proses data: $totalData line")
+                _cekBanState.value = CekBanState.PROCESSING
 
-                // ✅ Convert to ArrayList explicitly
+                if (totalData == 0) {
+                    Log.e("TETIRES", "Gagal: belum ada data yang diterima dari Bluetooth.")
+                    return@launch
+                }
+
+                // 🔹 3. Konversi ke ArrayList<String> dan kirim ke Python
                 val javaList = java.util.ArrayList(scanBuffer.toList())
 
-                addToTerminal("Calling Python with ${javaList.size} lines...")
+                val py = Python.getInstance()
+                val processingModule = py.getModule("tire_processing")
 
-                // ✅ Call Python
-                val resultJson = processingModule.callAttr(
-                    "process_single_sensor",
-                    javaList  // Pass as Java ArrayList
-                ).toString()
+                // Gunakan PyObject.fromJava biar data benar dikirim sebagai list
+                val pyList = com.chaquo.python.PyObject.fromJava(javaList)
 
-                addToTerminal("Python response received")
-                addToTerminal(resultJson.take(200) + "...")  // Log first 200 chars
+                Log.d("TETIRES", "Memanggil Python dengan ${javaList.size} item...")
+                val resultJson = processingModule.callAttr("process_single_sensor", pyList).toString()
+                Log.d("TETIRES", "Hasil Python: $resultJson")
 
-                val jsonObj = JSONObject(resultJson)
-                val success = jsonObj.getBoolean("success")
-                val message = jsonObj.getString("message")
+                // 🔹 Parse hasil JSON dari Python
+                val json = JSONObject(resultJson)
 
-                addToTerminal("Status: $success - $message")
+                val result = TireScanResult(
+                    posisi = currentPosisi ?: PosisiBan.DKA, // fallback biar gak null
+                    adcMean = json.optDouble("adc_mean", 0.0).toFloat(),
+                    adcStd = json.optDouble("adc_std", 0.0).toFloat(),
+                    voltageMv = json.optDouble("voltage_mv", 0.0).toFloat(),
+                    thicknessMm = json.optDouble("thickness_mm", 0.0).toFloat(),
+                    isWorn = json.optBoolean("is_worn", false),
+                    dataCount = totalData
+                )
 
-                if (success) {
-                    val data = jsonObj.getJSONObject("result")
-                    val result = TireScanResult(
-                        posisi = currentPosisi!!,
-                        adcMean = data.getDouble("adc_mean").toFloat(),
-                        adcStd = data.getDouble("adc_std").toFloat(),
-                        voltageMv = data.getDouble("voltage_mV").toFloat(),
-                        thicknessMm = data.getDouble("thickness_mm").toFloat(),
-                        isWorn = data.getBoolean("is_worn"),
-                        dataCount = data.getInt("pixel_count")
-                    )
+                // 🔹 Update hasil ke state flow
+                                val updatedResults = _scanResults.value.toMutableMap()
+                                updatedResults[currentPosisi!!] = result
+                                _scanResults.value = updatedResults
 
-                    val status = if (result.isWorn) "AUS ❌" else "OK ✅"
-                    addToTerminal("${currentPosisi!!.label}: ${result.thicknessMm} mm - $status")
-
-                    withContext(Dispatchers.Main) {
-                        // Simpan hasil ke map
-                        val updatedResults = _scanResults.value.toMutableMap()
-                        updatedResults[currentPosisi!!] = result
-                        _scanResults.value = updatedResults
-
-                        _cekBanState.value = CekBanState.RESULT_READY
-                        _statusMessage.value = "${currentPosisi!!.label}: ${result.thicknessMm} mm $status"
-                    }
-
-                } else {
-                    // ✅ Python returned success=false
-                    addToTerminal("ERROR: $message")
-
-                    withContext(Dispatchers.Main) {
-                        _cekBanState.value = CekBanState.ERROR
-                        _statusMessage.value = "Error: $message"
-                    }
+                // 🔹 Tampilkan di terminal
+                                withContext(Dispatchers.Main) {
+                                    addToTerminal(
+                                        """
+                        === HASIL ${currentPosisi?.label} ===
+                        Mean ADC: ${result.adcMean}
+                        STD ADC: ${result.adcStd}
+                        Tegangan: ${result.voltageMv} mV
+                        Ketebalan: ${result.thicknessMm} mm
+                        Status: ${if (result.isWorn) "AUS" else "OK"}
+                        ===========================
+                        """.trimIndent()
+                                    )
+                    _cekBanState.value = CekBanState.RESULT_READY
                 }
-
             } catch (e: Exception) {
-                Log.e(TAG, "Processing error: ${e.message}", e)
-                addToTerminal("EXCEPTION: ${e.javaClass.simpleName}")
-                addToTerminal("Message: ${e.message}")
-                e.printStackTrace()
-
-                withContext(Dispatchers.Main) {
-                    _cekBanState.value = CekBanState.ERROR
-                    _statusMessage.value = "Gagal memproses: ${e.message}"
-                }
+                Log.e("TETIRES", "Error saat proses data: ${e.message}", e)
             }
         }
     }
@@ -377,9 +360,7 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
         _statusMessage.value = "Pilih posisi ban berikutnya atau simpan semua"
     }
 
-    /**
-     * Simpan semua hasil scan ke database
-     */
+    // Di fungsi saveAllResults(), ubah bagian ini:
 
     fun saveAllResults() {
         val results = _scanResults.value
@@ -405,16 +386,22 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
                     addToTerminal("ERROR: Pengecekan tidak ditemukan")
                     withContext(Dispatchers.Main) {
                         _statusMessage.value = "Error: Data pengecekan tidak ditemukan"
+                        _cekBanState.value = CekBanState.ERROR
                     }
                     return@launch
                 }
 
-                // ✅ 2. Update status di Pengecekan (ringkasan boolean)
+                // ✅ 2. VALIDASI ULANG dengan threshold 1.6mm (bukan pakai isWorn dari Python)
+                val statusDka = results[PosisiBan.DKA]?.thicknessMm?.let { it < 1.6f }
+                val statusDki = results[PosisiBan.DKI]?.thicknessMm?.let { it < 1.6f }
+                val statusBka = results[PosisiBan.BKA]?.thicknessMm?.let { it < 1.6f }
+                val statusBki = results[PosisiBan.BKI]?.thicknessMm?.let { it < 1.6f }
+
                 val updatedPengecekan = pengecekan.copy(
-                    statusDka = results[PosisiBan.DKA]?.isWorn,
-                    statusDki = results[PosisiBan.DKI]?.isWorn,
-                    statusBka = results[PosisiBan.BKA]?.isWorn,
-                    statusBki = results[PosisiBan.BKI]?.isWorn
+                    statusDka = statusDka,
+                    statusDki = statusDki,
+                    statusBka = statusBka,
+                    statusBki = statusBki
                 )
                 pengecekanDao.updatePengecekan(updatedPengecekan)
                 addToTerminal("✓ Pengecekan updated")
@@ -431,11 +418,11 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
                     ukDki = results[PosisiBan.DKI]?.thicknessMm,
                     ukBka = results[PosisiBan.BKA]?.thicknessMm,
                     ukBki = results[PosisiBan.BKI]?.thicknessMm,
-                    // ✅ Simpan status aus (redundant untuk query cepat)
-                    statusDka = results[PosisiBan.DKA]?.isWorn,
-                    statusDki = results[PosisiBan.DKI]?.isWorn,
-                    statusBka = results[PosisiBan.BKA]?.isWorn,
-                    statusBki = results[PosisiBan.BKI]?.isWorn
+                    // ✅ Simpan status aus (REVALIDATED dengan < 1.6mm)
+                    statusDka = statusDka,
+                    statusDki = statusDki,
+                    statusBka = statusBka,
+                    statusBki = statusBki
                 )
 
                 // ✅ 4. Insert atau update DetailBan
@@ -447,10 +434,10 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
                     addToTerminal("✓ DetailBan updated")
                 }
 
-                // ✅ 5. Log hasil
+                // ✅ 5. Log hasil dengan status yang benar
                 addToTerminal("--- SAVED DATA ---")
                 results.forEach { (posisi, result) ->
-                    val status = if (result.isWorn) "AUS" else "OK"
+                    val status = if (result.thicknessMm < 1.6f) "AUS ❌" else "OK ✅"
                     addToTerminal("${posisi.label}: ${result.thicknessMm} mm ($status)")
                 }
                 addToTerminal("✓ Database save complete")
@@ -472,7 +459,6 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
             }
         }
     }
-
 
 
     /**
