@@ -119,6 +119,7 @@ fun DaftarBusScreen(
                 val matchesSearch = searchQuery.isBlank() ||
                         bus.namaBus.contains(searchQuery, ignoreCase = true) ||
                         bus.platNomor.contains(searchQuery, ignoreCase = true) ||
+                        (latestCheck?.tanggalReadable?.contains(searchQuery, ignoreCase = true) == true) ||
                         (mappedAusFilter != null && mappedAusFilter == ausCount)
 
                 val matchesAus = selectedAusFilter == null || ausCount == selectedAusFilter

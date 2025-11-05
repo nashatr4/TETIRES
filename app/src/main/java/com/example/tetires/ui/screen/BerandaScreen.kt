@@ -52,12 +52,12 @@ fun BerandaScreen(navController: NavController, viewModel: MainViewModel) {
             when (filterBy) {
                 "Tanggal" -> log.tanggalReadable.contains(searchQuery, ignoreCase = true)
                 "Plat Nomor" -> log.platNomor.contains(searchQuery, ignoreCase = true)
-                "Perusahaan Bus" -> log.namaBus.contains(searchQuery, ignoreCase = true)
-                "Status" -> log.summaryStatus.contains(searchQuery, ignoreCase = true)
+                "PO Bus" -> log.namaBus.contains(searchQuery, ignoreCase = true)
+                "Status" -> log.summaryStatus?.contains(searchQuery, ignoreCase = true) == true
                 else -> log.tanggalReadable.contains(searchQuery, ignoreCase = true)
                         || log.platNomor.contains(searchQuery, ignoreCase = true)
                         || log.namaBus.contains(searchQuery, ignoreCase = true)
-                        || log.summaryStatus.contains(searchQuery, ignoreCase = true)
+                        || (log.summaryStatus?.contains(searchQuery, ignoreCase = true) == true)
             }
         }
     }
@@ -101,7 +101,6 @@ fun BerandaScreen(navController: NavController, viewModel: MainViewModel) {
                         filterBy = filterBy,
                         onSearchChange = {
                             searchQuery = it
-                            viewModel.searchLogs(it)
                         },
                         onFilterChange = { filterBy = it }
                     )
