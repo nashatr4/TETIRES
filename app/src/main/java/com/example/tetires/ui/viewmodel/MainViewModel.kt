@@ -169,25 +169,26 @@ class MainViewModel(
         }
     }
 
-    fun updateCheckPartial(idCek: Long, posisi: PosisiBan, ukuran: Float) {
+    // Di MainViewModel, fungsi updateCheckPartial sudah benar:
+
+    fun updateCheckPartial(idCek: Long, posisi: PosisiBan, ukuran: Float) = viewModelScope.launch {
         if (!TireStatusHelper.isValidUkuran(ukuran)) {
             _errorMessage.value = "Ukuran tidak valid: $ukuran mm"
-            return
+            return@launch
         }
+        _isLoading.value = true
+        try {
+            val result = repository.updateCheckPartial(idCek, posisi, ukuran)
 
-        viewModelScope.launch {
-            _isLoading.value = true
-            try {
-                val result = repository.updateCheckPartial(idCek, posisi, ukuran)
-                _statusMessage.value = result.statusMessage
-                _updateCompleteEvent.value = Event(result.complete)
-                _errorMessage.value = null
-            } catch (e: Exception) {
-                _errorMessage.value = "Gagal update pengecekan: ${e.message}"
-                _statusMessage.value = null
-            }
-            _isLoading.value = false
+            // ✅ Sekarang result.statusMessage dan result.complete tersedia
+            _statusMessage.value = result.statusMessage
+            _updateCompleteEvent.value = Event(result.complete)
+            _errorMessage.value = null
+        } catch (e: Exception) {
+            _errorMessage.value = "Gagal update pengecekan: ${e.message}"
+            _statusMessage.value = null
         }
+        _isLoading.value = false
     }
 
     fun searchLogs(query: String? = null, startDate: Long? = null, endDate: Long? = null) {
@@ -297,7 +298,7 @@ class MainViewModel(
                     posisi = PosisiBan.DKA,
                     ukuran = 1.4f
                 )
-                Log.d("TEST_RESULT", "Success=${result.complete}, Message=${result.statusMessage ?: "null"}")
+                Log.d("TEST_RESULT", "Success=${result.complete}, Message=${result.statusMessage}")
             } catch (e: Exception) {
                 Log.e("TEST_RESULT", "Gagal: ${e.message}")
             }
