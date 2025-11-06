@@ -23,6 +23,8 @@
         android:name="android.hardware.bluetooth"
         android:required="true" />
 
+    !-- 🔥 USB Permissions -->
+    <uses-feature android:name="android.hardware.usb.host" android:required="false" />
     <application
         android:name=".TetiresApplication"
         android:allowBackup="true"
@@ -44,6 +46,7 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+                <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
             </intent-filter>
         </activity>
 
@@ -56,6 +59,9 @@
             <meta-data
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
+            <meta-data
+                android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
+                android:resource="@xml/usb_device_filter" />
         </provider>
 
     </application>
