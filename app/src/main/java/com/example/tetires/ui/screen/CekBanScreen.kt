@@ -292,7 +292,8 @@ fun ResultIcon(
 
         val (icon, color) = when {
             result != null -> {
-                if (result.isWorn) Icons.Default.Cancel to Color(0xFFEF4444)
+                // Kalau tebal < 1.6, paksa merah
+                if (result.thicknessMm < 1.6) Icons.Default.Cancel to Color(0xFFEF4444)
                 else Icons.Default.CheckCircle to Color(0xFF10B981)
             }
             state == CekBanState.SCANNING || state == CekBanState.PROCESSING ->
@@ -300,6 +301,7 @@ fun ResultIcon(
             else ->
                 Icons.Default.AddCircle to Color.LightGray
         }
+
 
         // ✅ Bigger icon (64.dp -> lebih mudah ditekan, mirip UI lama)
         IconButton(
@@ -375,7 +377,7 @@ fun ActionButtons(
                     Text("Stop & Proses", color = Color.White, fontWeight = FontWeight.Bold)
                 }
 
-                Text("Atau tunggu auto-stop (500 data)", fontSize = 12.sp, color = Color.Gray)
+                Text("Atau tunggu auto-stop", fontSize = 12.sp, color = Color.Gray)
             }
 
             CekBanState.RESULT_READY -> {
