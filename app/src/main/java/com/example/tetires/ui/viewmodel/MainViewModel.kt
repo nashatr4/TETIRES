@@ -9,6 +9,7 @@ import com.example.tetires.data.local.entity.Bus
 import com.example.tetires.data.local.entity.PengecekanWithBus
 import com.example.tetires.data.model.*
 import com.example.tetires.data.repository.TetiresRepository
+import com.example.tetires.util.DateUtils
 import com.example.tetires.util.DownloadHelper
 import com.example.tetires.util.TireStatusHelper
 import kotlinx.coroutines.Dispatchers
@@ -213,14 +214,14 @@ class MainViewModel(
     }
 
     private fun PengecekanWithBus.toPengecekanRingkas(): PengecekanRingkas {
-        val dateFormat = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale("id", "ID"))
-        val readableDate = dateFormat.format(Date(tanggalMs))
+        val tanggalReadable = DateUtils.formatDate(tanggalMs)  // WIB, Locale ID
+        val waktuReadable = DateUtils.formatTime(tanggalMs)    // WIB, Locale ID
 
         return PengecekanRingkas(
             idCek = idPengecekan,
             tanggalCek = tanggalMs,
-            tanggalReadable = readableDate,
-            waktuReadable = readableDate,
+            tanggalReadable = tanggalReadable,
+            waktuReadable = waktuReadable,
             namaBus = namaBus,
             platNomor = platNomor,
             statusDka = statusDka == true,
