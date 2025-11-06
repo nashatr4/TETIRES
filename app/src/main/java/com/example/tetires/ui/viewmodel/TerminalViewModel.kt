@@ -1,5 +1,6 @@
 package com.example.tetires.viewmodel
 
+import android.app.Application
 import android.content.Context
 import android.util.Log
 import androidx.compose.runtime.mutableStateOf
@@ -9,6 +10,7 @@ import com.chaquo.python.PyObject
 import com.chaquo.python.Python
 import com.example.tetires.util.BluetoothHelper
 import androidx.lifecycle.viewModelScope
+import com.example.tetires.util.DeviceConnectionManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -23,23 +25,25 @@ class TerminalViewModel(private val context: Context) : ViewModel() {
     var lastCheck = mutableStateOf("")
 
     private val lineBuffer = mutableListOf<String>()
-    private val bluetoothHelper = BluetoothHelper(context)
+    private val deviceManager = DeviceConnectionManager(context.applicationContext as Application)
     private val pythonInstance: Python = Python.getInstance()
     private val filteringModule: PyObject = pythonInstance.getModule("filtering")
 
     private var lastClearedLog = ""
 
     init {
-        // --- 2. Hubungkan Callback BluetoothHelper ---
-        // Panggil fungsi Python saat data diterima
-        bluetoothHelper.onDataReceived = { rawData ->
+        deviceManager.onDataReceived = { rawData ->
             processAndLogData(rawData)
         }
 
-        // Tampilkan status sistem di log
-        bluetoothHelper.onStatusChange = { statusText ->
-            addLog("SYSTEM: $statusText")
+        deviceManager.onStatusChange = { status ->
+            addLog("SYSTEM: $status")
         }
+
+        deviceManager.onDebugLog = { debug ->
+            addLog(debug)
+        }
+
     }
 
     private fun processAndLogData(rawData: String) {
@@ -92,22 +96,25 @@ class TerminalViewModel(private val context: Context) : ViewModel() {
         return sdf.format(Date())
     }
 
-    fun connectBluetooth() {
-        // Kosongkan buffer dan log lama setiap kali koneksi baru
+    fun connectDevice() {
         clearLogs()
         lineBuffer.clear()
-        addLog("SYSTEM: Mencoba menghubungkan...")
-        bluetoothHelper.connect()
+        addLog("SYSTEM: Auto detect & connect (USB > Bluetooth)...")
+        deviceManager.manualConnect()
     }
 
-    fun disconnectBluetooth() {
-        bluetoothHelper.disconnect()
+    fun disconnectDevice() {
+        addLog("SYSTEM: Disconnecting active device...")
+        deviceManager.disconnect()
     }
 
-    fun sendBluetoothCommand(command: String) {
-        bluetoothHelper.send(command)
-        addLog("KOTLIN (SENT): $command") // Tampilkan perintah terkirim di log
+
+
+    fun sendCommand(command: String) {
+        deviceManager.sendCommand(command)
+        addLog("KOTLIN (SENT): $command")
     }
+
 
     fun addLog(text: String) {
         val timestamp = getCurrentTimestamp()
@@ -128,4 +135,10 @@ class TerminalViewModel(private val context: Context) : ViewModel() {
             lastClearedLog = "" // reset biar tombol undo gak terus muncul
         }
     }
+
+    override fun onCleared() {
+        super.onCleared()
+        deviceManager.cleanup()
+    }
+
 }
