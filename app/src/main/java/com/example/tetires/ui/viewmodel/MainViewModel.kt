@@ -169,16 +169,21 @@ class MainViewModel(
         }
     }
 
-    fun updateCheckPartial(idCek: Long, posisi: PosisiBan, ukuran: Float) {
-        if (!TireStatusHelper.isValidUkuran(ukuran)) {
-            _errorMessage.value = "Ukuran tidak valid: $ukuran mm"
+    fun updateCheckPartial(idCek: Long, posisi: PosisiBan, alurValues: FloatArray) {
+        if (alurValues.size != 4) {
+            _errorMessage.value = "Harus 4 nilai alur"
+            return
+        }
+
+        if (alurValues.any { !TireStatusHelper.isValidUkuran(it) }) {
+            _errorMessage.value = "Ada nilai alur ban yang tidak valid"
             return
         }
 
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                val result = repository.updateCheckPartial(idCek, posisi, ukuran)
+                val result = repository.updateCheckPartial(idCek, posisi, alurValues)
                 _statusMessage.value = result.statusMessage
                 _updateCompleteEvent.value = Event(result.complete)
                 _errorMessage.value = null
@@ -222,10 +227,10 @@ class MainViewModel(
             waktuReadable = readableDate,
             namaBus = namaBus,
             platNomor = platNomor,
-            statusDka = statusDka == true,
-            statusDki = statusDki == true,
-            statusBka = statusBka == true,
-            statusBki = statusBki == true,
+            statusDka = statusDka,
+            statusDki = statusDki,
+            statusBka = statusBka,
+            statusBki = statusBki,
             summaryStatus = TireStatusHelper.summaryStatus(statusDka, statusDki, statusBka, statusBki)
         )
     }
@@ -295,7 +300,7 @@ class MainViewModel(
                 val result = repository.updateCheckPartial(
                     idPengecekan = 1L,
                     posisi = PosisiBan.DKA,
-                    ukuran = 1.4f
+                    alurValues = floatArrayOf(2.5f, 1.3f, 2.2f, 1.8f)
                 )
                 Log.d("TEST_RESULT", "Success=${result.complete}, Message=${result.statusMessage ?: "null"}")
             } catch (e: Exception) {

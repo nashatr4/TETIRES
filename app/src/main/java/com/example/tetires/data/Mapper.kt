@@ -23,6 +23,10 @@ fun PengecekanWithBus.toPengecekanRingkas(): PengecekanRingkas {
         statusDki = dki,
         statusBka = bka,
         statusBki = bki,
-        summaryStatus = if (dka || dki || bka || bki) "Aus" else "Tidak Aus"
+        summaryStatus = when {
+            listOf(statusDka, statusDki, statusBka, statusBki).any { it == null } -> "Belum Selesai"
+            listOf(statusDka, statusDki, statusBka, statusBki).any { it == true } -> "Aus"
+            else -> "Tidak Aus"
+        }
     )
 }

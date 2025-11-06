@@ -30,16 +30,6 @@ data class DetailBan(
 
     // FK ke pengecekan.idPengecekan
     val pengecekanId: Long,
-
-    // Tebal tapak (mm), null jika belum diukur
-    val ukDka: Float? = null,
-    val ukDki: Float? = null,
-    val ukBka: Float? = null,
-    val ukBki: Float? = null,
-
-    // Redundant status fields (nullable) buat memudahkan query / konsistensi UI
-    val statusDka: Boolean? = null,
-    val statusDki: Boolean? = null,
-    val statusBka: Boolean? = null,
-    val statusBki: Boolean? = null
+    val posisiBan: String,
+    val status: Boolean? = null
 )
