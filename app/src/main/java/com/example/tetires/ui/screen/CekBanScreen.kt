@@ -7,8 +7,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.DeviceUnknown
+import androidx.compose.material.icons.filled.Usb
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,6 +30,7 @@ import androidx.navigation.NavController
 import com.example.tetires.R
 import com.example.tetires.data.model.PosisiBan
 import com.example.tetires.ui.viewmodel.*
+import com.example.tetires.util.DeviceType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,13 +44,14 @@ fun CekBanScreen(
     val bluetoothVM: BluetoothSharedViewModel = viewModel(
         factory = BluetoothSharedViewModelFactory(context)
     )
+    val deviceInfo by bluetoothVM.deviceInfo.collectAsState()
+    val activeDeviceType by bluetoothVM.activeDeviceType.collectAsState()
 
     val cekBanState by bluetoothVM.cekBanState.collectAsState()
     val scanResults by bluetoothVM.scanResults.collectAsState()
-    val statusMessage by bluetoothVM.statusMessage.collectAsState()
+    val statusMessage by bluetoothVM.statusMessage.collectAsState(initial = null)
     val dataCount by bluetoothVM.dataCount.collectAsState()
     val isConnected by bluetoothVM.isConnected.collectAsState()
-
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(statusMessage) {
@@ -84,11 +89,17 @@ fun CekBanScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
 
+
             StateIndicatorCard(
                 state = cekBanState,
                 isConnected = isConnected,
-                dataCount = dataCount
+                dataCount = dataCount,
+                deviceInfo = deviceInfo,
+                activeDeviceType = activeDeviceType
             )
+
+
+
 
             Spacer(Modifier.height(16.dp))
 
@@ -122,7 +133,9 @@ fun CekBanScreen(
 fun StateIndicatorCard(
     state: CekBanState,
     isConnected: Boolean,
-    dataCount: Int
+    dataCount: Int,
+    deviceInfo: String,
+    activeDeviceType: DeviceType
 ) {
     val bgColor = when (state) {
         CekBanState.IDLE -> Color(0xFFF3F4F6)
@@ -158,6 +171,27 @@ fun StateIndicatorCard(
                     fontWeight = FontWeight.Bold
                 )
 
+                if (isConnected) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            when (activeDeviceType) {
+                                DeviceType.USB -> Icons.Default.Usb
+                                DeviceType.BLUETOOTH -> Icons.Default.Bluetooth
+                                else -> Icons.Default.DeviceUnknown
+                            },
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = Color(0xFF10B981)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            deviceInfo,
+                            fontSize = 11.sp,
+                            color = Color(0xFF10B981)
+                        )
+                    }
+                }
+
                 Text(
                     text = when (state) {
                         CekBanState.SCANNING -> "$dataCount data diterima"
@@ -168,6 +202,7 @@ fun StateIndicatorCard(
                     fontSize = 12.sp,
                     color = Color.Gray
                 )
+
             }
 
             when (state) {
