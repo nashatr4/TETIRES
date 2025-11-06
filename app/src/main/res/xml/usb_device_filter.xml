@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- CH340/CH341 USB-to-Serial -->
+    <usb-device vendor-id="6790" product-id="29987" />
+    <usb-device vendor-id="6790" product-id="21795" />
+
+    <!-- FTDI USB-to-Serial -->
+    <usb-device vendor-id="1027" product-id="24577" />
+
+    <!-- CP210x USB-to-Serial -->
+    <usb-device vendor-id="4292" product-id="60000" />
+    <usb-device vendor-id="4292" product-id="60016" />
+
+    <!-- STM32 Virtual COM (CDC ACM, VID=0483, PID=5740) -->
+    <usb-device vendor-id="1155" product-id="22336" />
+
+    <!-- PL2303 USB-to-Serial -->
+    <usb-device vendor-id="1659" product-id="8963" />
+</resources>

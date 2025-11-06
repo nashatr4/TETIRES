@@ -211,6 +211,17 @@ class BluetoothHelper(private val context: Context) {
         readThread?.start()
     }
 
+    @SuppressLint("MissingPermission")
+    fun isBluetoothEnabled(): Boolean {
+        return bluetoothAdapter?.isEnabled == true
+    }
+
+    @SuppressLint("MissingPermission")
+    fun isPairedDeviceAvailable(): Boolean {
+        val pairedDevices = bluetoothAdapter?.bondedDevices ?: return false
+        return pairedDevices.any { it.name?.contains(targetDeviceName, ignoreCase = true) == true }
+    }
+
     /**
      * Kirim data (command) ke device
      */
