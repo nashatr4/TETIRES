@@ -225,7 +225,7 @@ fun BusLayoutWithResults(
                 }
         )
 
-        // ✅ Depan Kiri (DKI)
+        // Depan Kiri (DKI)
         ResultIcon(
             modifier = Modifier.constrainAs(iconDKI) {
                 top.linkTo(topGuide, margin = -10.dp)
@@ -237,7 +237,7 @@ fun BusLayoutWithResults(
             onClick = { onSelectPosition(PosisiBan.DKI) }
         )
 
-        // ✅ Depan Kanan (DKA)
+        // Depan Kanan (DKA)
         ResultIcon(
             modifier = Modifier.constrainAs(iconDKA) {
                 top.linkTo(topGuide, margin = -10.dp)
@@ -249,7 +249,7 @@ fun BusLayoutWithResults(
             onClick = { onSelectPosition(PosisiBan.DKA) }
         )
 
-        // ✅ Belakang Kiri (BKI)
+        // Belakang Kiri (BKI)
         ResultIcon(
             modifier = Modifier.constrainAs(iconBKI) {
                 bottom.linkTo(bottomGuide, margin = -10.dp)
@@ -261,7 +261,7 @@ fun BusLayoutWithResults(
             onClick = { onSelectPosition(PosisiBan.BKI) }
         )
 
-        // ✅ Belakang Kanan (BKA)
+        // Belakang Kanan (BKA)
         ResultIcon(
             modifier = Modifier.constrainAs(iconBKA) {
                 bottom.linkTo(bottomGuide, margin = -10.dp)
@@ -301,7 +301,6 @@ fun ResultIcon(
                 Icons.Default.AddCircle to Color.LightGray
         }
 
-        // ✅ Bigger icon (64.dp -> lebih mudah ditekan, mirip UI lama)
         IconButton(
             onClick = onClick,
             modifier = Modifier.size(70.dp)
@@ -314,10 +313,10 @@ fun ResultIcon(
             )
         }
 
-        // ✅ Angka tebal lebih dekat ke ikon
+        // Angka tebal lebih dekat ke ikon
         result?.let {
             Text(
-                "${"%.1f".format(it.thicknessMm)} mm",
+                "${"%.1f".format(it.minGroove)} mm",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 color = color
@@ -344,7 +343,7 @@ fun ActionButtons(
         when (state) {
 
             CekBanState.IDLE -> {
-                // ✅ User belum pilih posisi
+                // User belum pilih posisi
                 Text(
                     "👆 Pilih posisi ban untuk mulai scan",
                     fontSize = 14.sp,
@@ -354,7 +353,7 @@ fun ActionButtons(
             }
 
             CekBanState.WAITING_SCAN -> {
-                // ✅ User sudah pilih posisi, siap scan
+                // User sudah pilih posisi, siap scan
                 Button(
                     onClick = onStartScan,
                     modifier = Modifier.size(250.dp, 56.dp),
@@ -365,7 +364,7 @@ fun ActionButtons(
             }
 
             CekBanState.SCANNING -> {
-                // ✅ Sedang scan
+                // Sedang scan
                 Button(
                     onClick = onStop,
                     modifier = Modifier.size(250.dp, 56.dp),

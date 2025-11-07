@@ -166,8 +166,7 @@ fun TopAppBar() {
         },
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = Color.White
-        ),
-        windowInsets = WindowInsets(0.dp)
+        )
     )
 }
 
