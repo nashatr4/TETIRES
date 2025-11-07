@@ -25,6 +25,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.chaquo.python.Python
+import com.example.tetires.data.local.dao.PengukuranAlurDao
 import com.example.tetires.data.local.database.AppDatabase
 import com.example.tetires.data.repository.TetiresRepository
 import com.example.tetires.ui.screen.*
@@ -52,7 +53,8 @@ class MainActivity : ComponentActivity() {
         val repository = TetiresRepository(
             busDao = database.busDao(),
             pengecekanDao = database.pengecekanDao(),
-            detailBanDao = database.detailBanDao()
+            detailBanDao = database.detailBanDao(),
+            pengukuranAlurDao = database.pengukuranAlurDao()
         )
 
         // Jetpack Compose UI

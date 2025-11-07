@@ -11,8 +11,8 @@ data class CheckDetail(
     val statusDki: Boolean,
     val statusBka: Boolean,
     val statusBki: Boolean,
-    val ukDka: Float,
-    val ukDki: Float,
-    val ukBka: Float,
-    val ukBki: Float
+    val alurDka: AlurBan?,
+    val alurDki: AlurBan?,
+    val alurBka: AlurBan?,
+    val alurBki: AlurBan?
 )

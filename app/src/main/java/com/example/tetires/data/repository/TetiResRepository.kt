@@ -3,9 +3,11 @@ package com.example.tetires.data.repository
 import com.example.tetires.data.local.dao.BusDao
 import com.example.tetires.data.local.dao.DetailBanDao
 import com.example.tetires.data.local.dao.PengecekanDao
+import com.example.tetires.data.local.dao.PengukuranAlurDao
 import com.example.tetires.data.local.entity.Bus
 import com.example.tetires.data.local.entity.DetailBan
 import com.example.tetires.data.local.entity.Pengecekan
+import com.example.tetires.data.local.entity.PengukuranAlur
 import com.example.tetires.data.model.*
 import com.example.tetires.util.DateUtils
 import com.example.tetires.util.TireStatusHelper
@@ -15,7 +17,8 @@ import kotlinx.coroutines.flow.map
 class TetiresRepository(
     private val busDao: BusDao,
     private val pengecekanDao: PengecekanDao,
-    private val detailBanDao: DetailBanDao
+    private val detailBanDao: DetailBanDao,
+    private val pengukuranAlurDao: PengukuranAlurDao
 ) {
 
     // ========== BUS ==========
@@ -35,7 +38,6 @@ class TetiresRepository(
     }
 
     suspend fun deleteBus(bus: Bus) = busDao.deleteBus(bus)
-
     suspend fun getBusById(busId: Long): Bus? = busDao.getBusById(busId)
 
     // ========== PENGECEKAN ==========
@@ -43,11 +45,7 @@ class TetiresRepository(
         val latest = pengecekanDao.getLatestPengecekanForBus(busId)
         val shouldCreateNew = if (latest == null) true
         else {
-            val detailList = detailBanDao.getDetailsByCheckId(latest.idPengecekan)
-            val lastDetail = detailList.firstOrNull()
-            lastDetail?.let {
-                listOf(it.ukDka, it.ukDki, it.ukBka, it.ukBki).all { uk -> uk != null }
-            } ?: false
+            listOf(latest.statusDka, latest.statusDki, latest.statusBka, latest.statusBki).all { it != null }
         }
 
         return if (shouldCreateNew) {
@@ -57,36 +55,65 @@ class TetiresRepository(
                 waktuMs = System.currentTimeMillis()
             )
             val newId = pengecekanDao.insertPengecekan(newCheck)
-            detailBanDao.insertDetailBan(DetailBan(pengecekanId = newId))
+
+            // 4 Detail Ban untuk 4 Posisi Ban
+            val posisiBanList = listOf("DKA", "DKI", "BKA", "BKI")
+            val detailBanList = posisiBanList.map { posisi ->
+                DetailBan(
+                    pengecekanId = newId,
+                    posisiBan = posisi,
+                    status = null
+                )
+            }
+            val detailIds = detailBanDao.insertAllDetailBan(detailBanList)
+
+            // Buat 4 PengukuranAlur untuk setiap Detail Ban
+            val pengukuranList = detailIds.map { detailId ->
+                PengukuranAlur(detailBanId = detailId)
+            }
+            pengukuranAlurDao.insertAllPengukuran(pengukuranList)
+
             newCheck.copy(idPengecekan = newId)
         } else {
             latest ?: throw IllegalStateException("Gagal mendapatkan pengecekan terbaru")
         }
     }
 
-    // ✅ FIX: Ubah parameter name dan return type
-    suspend fun updateCheckPartial(idPengecekan: Long, posisi: PosisiBan, ukuran: Float): UpdateCheckResult {
-        val detail = detailBanDao.getDetailBanById(idPengecekan)
+    suspend fun updateCheckPartial(
+        idPengecekan: Long,
+        posisi: PosisiBan,
+        alurValues: FloatArray
+    ): UpdateResult {
+        require(alurValues.size == 4) { "alurValues harus berisi 4 nilai" }
 
-        val updated = (detail ?: DetailBan(pengecekanId = idPengecekan)).copy(
-            ukDka = if (posisi == PosisiBan.DKA) ukuran else detail?.ukDka,
-            ukDki = if (posisi == PosisiBan.DKI) ukuran else detail?.ukDki,
-            ukBka = if (posisi == PosisiBan.BKA) ukuran else detail?.ukBka,
-            ukBki = if (posisi == PosisiBan.BKI) ukuran else detail?.ukBki,
-            // ✅ Langsung update status saat input (< 1.6mm = aus)
-            statusDka = if (posisi == PosisiBan.DKA) (ukuran < 1.6f) else detail?.statusDka,
-            statusDki = if (posisi == PosisiBan.DKI) (ukuran < 1.6f) else detail?.statusDki,
-            statusBka = if (posisi == PosisiBan.BKA) (ukuran < 1.6f) else detail?.statusBka,
-            statusBki = if (posisi == PosisiBan.BKI) (ukuran < 1.6f) else detail?.statusBki
-        )
+        val check = pengecekanDao.getPengecekanById(idPengecekan)
+            ?: throw IllegalArgumentException("Pengecekan tidak ditemukan")
 
-        if (detail == null)
-            detailBanDao.insertDetailBan(updated)
-        else
-            detailBanDao.updateDetailBan(updated)
+        val detail = detailBanDao.getDetailByPosisi(idPengecekan, posisi.name)
+            ?: throw IllegalArgumentException("Detail ban $posisi tidak ditemukan")
 
-        // ✅ Update status di tabel Pengecekan juga
-        syncStatusWithDetail(idPengecekan)
+        val isAus = alurValues.any { it < 1.6f }
+
+        val updatedDetail = detail.copy(status = isAus)
+        detailBanDao.updateDetailBan(updatedDetail)
+
+        val existingPengukuran = pengukuranAlurDao.getPengukuranByDetailBanId(detail.idDetail)
+        val pengukuran = (existingPengukuran ?: PengukuranAlur(detailBanId = detail.idDetail))
+            .copy(
+                alur1 = alurValues[0],
+                alur2 = alurValues[1],
+                alur3 = alurValues[2],
+                alur4 = alurValues[3]
+            )
+        pengukuranAlurDao.insertPengukuran(pengukuran)
+
+        val updatedCheck = when (posisi) {
+            PosisiBan.DKA -> check.copy(statusDka = isAus)
+            PosisiBan.DKI -> check.copy(statusDki = isAus)
+            PosisiBan.BKA -> check.copy(statusBka = isAus)
+            PosisiBan.BKI -> check.copy(statusBki = isAus)
+        }
+        pengecekanDao.updatePengecekan(updatedCheck)
 
         // ✅ Cek apakah semua ban sudah diisi
         val complete = listOf(
@@ -132,7 +159,26 @@ class TetiresRepository(
     suspend fun getCheckDetail(idCek: Long): CheckDetail? {
         val check = pengecekanDao.getPengecekanById(idCek) ?: return null
         val bus = busDao.getBusById(check.busId) ?: return null
-        val detail = detailBanDao.getDetailsByCheckId(idCek).firstOrNull() ?: return null
+
+        val detailList = detailBanDao.getDetailsByCheckId(idCek)
+        if (detailList.isEmpty()) return null
+
+        val detailMap = detailList.associateBy { it.posisiBan }
+
+        val pengukuranMap = detailList.associate { detail ->
+            detail.posisiBan to pengukuranAlurDao.getPengukuranByDetailBanId(detail.idDetail)
+        }
+
+        fun createAlurBan(pengukuran: PengukuranAlur?): AlurBan? {
+            return pengukuran?.let {
+                AlurBan(
+                    alur1 = it.alur1,
+                    alur2 = it.alur2,
+                    alur3 = it.alur3,
+                    alur4 = it.alur4
+                )
+            }
+        }
 
         return CheckDetail(
             idCek = check.idPengecekan,
@@ -141,14 +187,18 @@ class TetiresRepository(
             waktuReadable = DateUtils.formatTime(check.waktuMs),
             namaBus = bus.namaBus,
             platNomor = bus.platNomor,
-            statusDka = detail.statusDka ?: false,
-            statusDki = detail.statusDki ?: false,
-            statusBka = detail.statusBka ?: false,
-            statusBki = detail.statusBki ?: false,
-            ukDka = detail.ukDka ?: 0f,
-            ukDki = detail.ukDki ?: 0f,
-            ukBka = detail.ukBka ?: 0f,
-            ukBki = detail.ukBki ?: 0f
+
+            // Status ban
+            statusDka = detailMap["DKA"]?.status ?: false,
+            statusDki = detailMap["DKI"]?.status ?: false,
+            statusBka = detailMap["BKA"]?.status ?: false,
+            statusBki = detailMap["BKI"]?.status ?: false,
+
+            // Rata-rata kedalaman (dari 4 alur)
+            alurDka = createAlurBan(pengukuranMap["DKA"]),
+            alurDki = createAlurBan(pengukuranMap["DKI"]),
+            alurBka = createAlurBan(pengukuranMap["BKA"]),
+            alurBki = createAlurBan(pengukuranMap["BKI"]),
         )
     }
 
@@ -223,17 +273,23 @@ class TetiresRepository(
     // ✅ FIX: Gunakan < 1.6f (bukan <=)
     suspend fun completeCheck(idCek: Long) {
         val detailList = detailBanDao.getDetailsByCheckId(idCek)
-        val updatedList = detailList.map { detail ->
-            detail.copy(
-                statusDka = detail.statusDka ?: (detail.ukDka?.let { it < 1.6f } ?: false),
-                statusDki = detail.statusDki ?: (detail.ukDki?.let { it < 1.6f } ?: false),
-                statusBka = detail.statusBka ?: (detail.ukBka?.let { it < 1.6f } ?: false),
-                statusBki = detail.statusBki ?: (detail.ukBki?.let { it < 1.6f } ?: false)
-            )
-        }
-
-        for (detail in updatedList) {
-            detailBanDao.updateDetailBan(detail)
+        for (detail in detailList) {
+            if (detail.status == null) {
+                // Ambil pengukuran untuk ban
+                val pengukuran = pengukuranAlurDao.getPengukuranByDetailBanId(detail.idDetail)
+                if (pengukuran != null) {
+                    val alurList = listOfNotNull(
+                        pengukuran.alur1,
+                        pengukuran.alur2,
+                        pengukuran.alur3,
+                        pengukuran.alur4
+                    )
+                    if (alurList.isNotEmpty()) {
+                        val isAus = alurList.any { it < 1.6f }
+                        detailBanDao.updateDetailBan(detail.copy(status = isAus))
+                    }
+                }
+            }
         }
     }
 

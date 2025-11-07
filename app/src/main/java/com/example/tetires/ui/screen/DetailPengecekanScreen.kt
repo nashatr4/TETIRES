@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.tetires.data.model.CheckDetail
+import com.example.tetires.data.model.AlurBan
 import com.example.tetires.ui.viewmodel.MainViewModel
 
 // ---------------- REAL SCREEN ----------------
@@ -126,17 +127,17 @@ fun DetailPengecekanContent(detail: CheckDetail) {
 
         // 🔹 Layout Ban 2x2
         Row(modifier = Modifier.fillMaxWidth()) {
-            BanDetailCard("Depan Kiri", detail.statusDki, detail.ukDki, Modifier.weight(1f))
+            BanDetailCard("Depan Kiri", detail.statusDki, detail.alurDki, Modifier.weight(1f))
             Spacer(modifier = Modifier.width(10.dp))
-            BanDetailCard("Depan Kanan", detail.statusDka, detail.ukDka, Modifier.weight(1f))
+            BanDetailCard("Depan Kanan", detail.statusDka, detail.alurDka, Modifier.weight(1f))
         }
 
         Spacer(modifier = Modifier.height(10.dp))
 
         Row(modifier = Modifier.fillMaxWidth()) {
-            BanDetailCard("Belakang Kiri", detail.statusBki, detail.ukBki, Modifier.weight(1f))
+            BanDetailCard("Belakang Kiri", detail.statusBki, detail.alurBki, Modifier.weight(1f))
             Spacer(modifier = Modifier.width(10.dp))
-            BanDetailCard("Belakang Kanan", detail.statusBka, detail.ukBka, Modifier.weight(1f))
+            BanDetailCard("Belakang Kanan", detail.statusBka, detail.alurBka, Modifier.weight(1f))
         }
     }
 }
@@ -146,7 +147,7 @@ fun DetailPengecekanContent(detail: CheckDetail) {
 fun BanDetailCard(
     posisi: String,
     status: Boolean?,
-    tebalTapak: Float,
+    alur: AlurBan?,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -175,18 +176,23 @@ fun BanDetailCard(
             HorizontalDivider(thickness = 1.dp, color = Color(0xFF19A7CE))
             Spacer(modifier = Modifier.height(8.dp))
 
+            AlurRow(label = "Alur 1", value = alur?.alur1)
+            AlurRow(label = "Alur 2", value = alur?.alur2)
+            AlurRow(label = "Alur 3", value = alur?.alur3)
+            AlurRow(label = "Alur 4", value = alur?.alur4)
+
             // 🔹 Bagian isi rata kanan–kiri seperti semula
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text("Tebal Tapak", color = Color.Gray, fontSize = 12.sp)
-                Text(
-                    "${String.format("%.1f", tebalTapak)} mm",
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 12.sp
-                )
-            }
+//            Row(
+//                modifier = Modifier.fillMaxWidth(),
+//                horizontalArrangement = Arrangement.SpaceBetween
+//            ) {
+//                Text("Tebal Tapak", color = Color.Gray, fontSize = 12.sp)
+//                Text(
+//                    "${String.format("%.1f", tebalTapak)} mm",
+//                    fontWeight = FontWeight.Medium,
+//                    fontSize = 12.sp
+//                )
+//            }
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -201,6 +207,33 @@ fun BanDetailCard(
     }
 }
 
+@Composable
+private fun AlurRow(label: String, value: Float?) {
+    // Tampilkan "N/A" jika data null
+    val textValue = value?.let { String.format("%.1f mm", it) } ?: "N/A"
+
+    // Beri warna merah jika < 1.6mm
+    val color = when {
+        value == null -> Color.Gray
+        value < 1.6f -> Color(0xFFEF4444) // Merah
+        else -> Color.Black
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(label, color = Color.Gray, fontSize = 12.sp)
+        Text(
+            textValue,
+            fontWeight = FontWeight.Medium,
+            fontSize = 12.sp,
+            color = color // Warna dinamis
+        )
+    }
+}
 
 @Composable
 fun StatusBadge(statusAus: Boolean?) {
@@ -225,34 +258,42 @@ data class DummyCheckDetail(
     val platNomor: String,
     val tanggalReadable: String,
     val waktuReadable: String,
-    val statusDki: Boolean,
-    val statusDka: Boolean,
-    val statusBki: Boolean,
-    val statusBka: Boolean,
-    val ukDki: Float,
-    val ukDka: Float,
-    val ukBki: Float,
-    val ukBka: Float
+    val statusDki: Boolean?,
+    val statusDka: Boolean?,
+    val statusBki: Boolean?,
+    val statusBka: Boolean?,
+    val ukDki: AlurBan?,
+    val ukDka: AlurBan?,
+    val ukBki: AlurBan?,
+    val ukBka: AlurBan?
 )
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun PreviewDetailPengecekanScreen() {
+    val alurDki_OK = AlurBan(1.7f, 1.8f, 1.9f, 2.0f)
+    val alurDka_AUS = AlurBan(1.4f, 1.6f, 1.7f, 1.5f) // Ada yg < 1.6
+    val alurBki_OK = AlurBan(1.8f, 1.8f, 1.9f, 2.1f)
+    val alurBka_NULL = null
     val dummyDetail = DummyCheckDetail(
         namaBus = "UGM Trans 01",
         platNomor = "AB 1234 XY",
         tanggalReadable = "22 Okt 2025",
         waktuReadable = "10:30",
         statusDki = false,
-        statusDka = true,
+        ukDki = alurDki_OK,
+
+        statusDka = true, // Aus
+        ukDka = alurDka_AUS,
+
         statusBki = false,
-        statusBka = false,
-        ukDki = 1.7f,
-        ukDka = 1.4f,
-        ukBki = 1.8f,
-        ukBka = 1.6f
+        ukBki = alurBki_OK,
+
+        statusBka = null, // Belum dicek
+        ukBka = alurBka_NULL
     )
+
 
     Scaffold {
         Column(modifier = Modifier.padding(16.dp)) {

@@ -38,6 +38,7 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
     private val busDao = database.busDao()
     private val pengecekanDao = database.pengecekanDao()
     private val detailBanDao = database.detailBanDao()
+    private val pengukuranAlurDao = database.pengukuranAlurDao()
 
     private val repository = com.example.tetires.data.repository.TetiresRepository(
         busDao, pengecekanDao, detailBanDao
@@ -72,6 +73,7 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
     private val _statusMessage = MutableStateFlow<String?>(null)
     val statusMessage: StateFlow<String?> = _statusMessage.asStateFlow()
 
+    // Buffer untuk 4 alur
     private val scanBuffer = mutableListOf<String>()
 
     private val _dataCount = MutableStateFlow(0)
@@ -106,6 +108,7 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
             // Jika dalam mode CEK_BAN dan state SCANNING
             if (_appMode.value == AppMode.CEK_BAN && _cekBanState.value == CekBanState.SCANNING) {
                 scanBuffer.add(rawData)
+
                 _dataCount.value = scanBuffer.size
 
                 if (scanBuffer.size == 1110) {
@@ -261,8 +264,26 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
         processCurrentScan()
     }
 
+    /**
+     * Process data yang sudah di-scan untuk posisi saat ini
+     */
     fun processCurrentScan() {
-        viewModelScope.launch(Dispatchers.IO) {
+        if (scanBuffer.isEmpty()) {
+            _statusMessage.value = "Tidak ada data untuk diproses"
+            _cekBanState.value = CekBanState.ERROR
+            return
+        }
+
+        if (currentPosisi == null) {
+            _statusMessage.value = "Error: Posisi tidak valid"
+            _cekBanState.value = CekBanState.ERROR
+            return
+        }
+
+        _cekBanState.value = CekBanState.PROCESSING
+        _statusMessage.value = "Memproses ${scanBuffer.size} data untuk ${currentPosisi!!.label}..."
+
+        viewModelScope.launch(Dispatchers.Default) {
             try {
                 val totalData = scanBuffer.size
                 Log.d(TAG, "Proses data: $totalData line")
@@ -273,6 +294,42 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
                     return@launch
                 }
 
+                addToTerminal("Calling Python with ${javaList.size} lines...")
+
+                // ✅ Call Python
+                val resultJson = processingModule.callAttr(
+                    "process_single_sensor",
+                    javaList  // Pass as Java ArrayList
+                ).toString()
+
+                addToTerminal("Python response received")
+                addToTerminal(resultJson.take(200) + "...")  // Log first 200 chars
+
+                val jsonObj = JSONObject(resultJson)
+                val success = jsonObj.getBoolean("success")
+                val message = jsonObj.getString("message")
+
+                addToTerminal("Status: $success - $message")
+
+                if (success) {
+                    val data = jsonObj.getJSONObject("result")
+                    val result = TireScanResult(
+                        posisi = currentPosisi!!,
+                        adcMean = data.getDouble("adc_mean").toFloat(),
+                        adcStd = data.getDouble("adc_std").toFloat(),
+                        voltageMv = data.getDouble("voltage_mV").toFloat(),
+                        isWorn = data.getBoolean("is_worn"),
+                        dataCount = data.getInt("pixel_count"),
+
+                        alur1 = data.getDouble("alur1").toFloat(),
+                        alur2 = data.getDouble("alur2").toFloat(),
+                        alur3 = data.getDouble("alur3").toFloat(),
+                        alur4 = data.getDouble("alur4").toFloat()
+                    )
+
+                    val status = if (result.isWorn) "AUS ❌" else "OK ✅"
+                    val minGroove = result.minGroove
+                    addToTerminal("${currentPosisi!!.label}: Min: ${minGroove} mm - $status")
                 val javaList = java.util.ArrayList(scanBuffer.toList())
                 val pyList = com.chaquo.python.PyObject.fromJava(javaList)
 
@@ -282,15 +339,21 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
 
                 val json = JSONObject(resultJson)
 
-// Ambil nilai thickness kalau valid
-                val rawThickness = if (json.has("thickness_mm") &&
-                    !json.isNull("thickness_mm")) json.optDouble("thickness_mm", Double.NaN) else Double.NaN
+                        _cekBanState.value = CekBanState.RESULT_READY
+                        _statusMessage.value = "${currentPosisi!!.label}: Min ${minGroove} mm $status"
+                    }
 
 // Cek validasi
                 val thicknessMm = if (rawThickness.isFinite() && rawThickness > 0) {
                     rawThickness.toFloat()
                 } else {
-                    Float.NaN // atau null kalau kamu mau nanti dicek
+                    // Python returned success=false
+                    addToTerminal("ERROR: $message")
+
+                    withContext(Dispatchers.Main) {
+                        _cekBanState.value = CekBanState.ERROR
+                        _statusMessage.value = "Error: $message"
+                    }
                 }
 
 // Buat objek hasil, tapi tanpa nilai 0 palsu
@@ -357,6 +420,25 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
             try {
                 addToTerminal("\n=== SAVING TO DATABASE ===")
 
+                val statusMap = mutableMapOf<PosisiBan, Boolean?>()
+                for((posisi, result) in results) {
+                    val statusBan: Boolean? = result.isWorn
+                    statusMap[posisi] = statusBan
+
+                    // Update DetailBan
+                    var detailBan = detailBanDao.getDetailByPosisi(
+                        currentPengecekanId!!,
+                        posisi.name // "DKA", "DKI", dll.
+                    )
+
+                    if (detailBan == null) {
+                        detailBan = DetailBan(
+                            pengecekanId = currentPengecekanId!!,
+                            posisiBan = posisi.name,
+                            status = statusBan
+                        )
+                    } else {
+                        detailBan = detailBan.copy(status = statusBan)
                 val pengecekan = pengecekanDao.getPengecekanById(currentPengecekanId!!)
                 if (pengecekan == null) {
                     addToTerminal("ERROR: Pengecekan tidak ditemukan")
@@ -364,49 +446,52 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
                         _statusMessage.value = "Error: Data tidak ditemukan"
                         _cekBanState.value = CekBanState.ERROR
                     }
-                    return@launch
+
+                    val detailBanId = detailBanDao.insertDetailBan(detailBan)
+                    addToTerminal("Saved DetailBan for ${posisi.name} (ID: $detailBanId)")
+
+                    var pengukuran = pengukuranAlurDao.getPengukuranByDetailBanId(detailBanId)
+
+                    if (pengukuran == null) {
+                        // Belum ada, buat baru
+                        pengukuran = com.example.tetires.data.local.entity.PengukuranAlur(
+                            detailBanId = detailBanId,
+                            alur1 = result.alur1,
+                            alur2 = result.alur2,
+                            alur3 = result.alur3,
+                            alur4 = result.alur4
+                        )
+                    } else {
+                        pengukuran = pengukuran.copy(
+                            alur1 = result.alur1,
+                            alur2 = result.alur2,
+                            alur3 = result.alur3,
+                            alur4 = result.alur4
+                        )
+                    }
+
+                    pengukuranAlurDao.insertPengukuran(pengukuran)
+                    addToTerminal("Saved PengukuranAlur for ${posisi.name}")
                 }
 
-                val statusDka = results[PosisiBan.DKA]?.thicknessMm?.let { it < 1.6f }
-                val statusDki = results[PosisiBan.DKI]?.thicknessMm?.let { it < 1.6f }
-                val statusBka = results[PosisiBan.BKA]?.thicknessMm?.let { it < 1.6f }
-                val statusBki = results[PosisiBan.BKI]?.thicknessMm?.let { it < 1.6f }
+                // Ambil pengecekan yang ada
+                val pengecekan = pengecekanDao.getPengecekanById(currentPengecekanId!!)
+                if (pengecekan != null) {
 
-                val updatedPengecekan = pengecekan.copy(
-                    statusDka = statusDka,
-                    statusDki = statusDki,
-                    statusBka = statusBka,
-                    statusBki = statusBki
-                )
-                pengecekanDao.updatePengecekan(updatedPengecekan)
-
-                val existingDetails = detailBanDao.getDetailsByCheckId(currentPengecekanId!!)
-                val existingDetail = existingDetails.firstOrNull()
-
-                val detailBan = DetailBan(
-                    idDetail = existingDetail?.idDetail ?: 0L,
-                    pengecekanId = currentPengecekanId!!,
-                    ukDka = results[PosisiBan.DKA]?.thicknessMm,
-                    ukDki = results[PosisiBan.DKI]?.thicknessMm,
-                    ukBka = results[PosisiBan.BKA]?.thicknessMm,
-                    ukBki = results[PosisiBan.BKI]?.thicknessMm,
-                    statusDka = statusDka,
-                    statusDki = statusDki,
-                    statusBka = statusBka,
-                    statusBki = statusBki
-                )
-
-                if (existingDetail == null) {
-                    detailBanDao.insertDetailBan(detailBan)
-                } else {
-                    detailBanDao.updateDetailBan(detailBan)
+                    val updatedPengecekan = pengecekan.copy(
+                        statusDka = statusMap[PosisiBan.DKA],
+                        statusDki = statusMap[PosisiBan.DKI],
+                        statusBka = statusMap[PosisiBan.BKA],
+                        statusBki = statusMap[PosisiBan.BKI]
+                    )
+                    pengecekanDao.updatePengecekan(updatedPengecekan)
+                    addToTerminal("Updated Pengecekan summary")
                 }
-
-                addToTerminal("✓ Database save complete")
 
                 withContext(Dispatchers.Main) {
                     _cekBanState.value = CekBanState.SAVED
                     _statusMessage.value = "Semua data berhasil disimpan!"
+                    addToTerminal("=== DATABASE SAVE COMPLETE ===")
                 }
 
             } catch (e: Exception) {
@@ -462,7 +547,20 @@ data class TireScanResult(
     val adcMean: Float,
     val adcStd: Float,
     val voltageMv: Float,
-    val thicknessMm: Float,
     val isWorn: Boolean,
-    val dataCount: Int
-)
+    val dataCount: Int,
+
+    val alur1: Float,
+    val alur2: Float,
+    val alur3: Float,
+    val alur4: Float,
+) {
+    val minGroove: Float
+        get() = listOf(alur1, alur2, alur3, alur4).minOrNull() ?: 0f
+
+    val groovesFormatted: String
+        get() = "${"%.1f".format(alur1)} | ${"%.1f".format(alur2)} | ${"%.1f".format(alur3)} | ${"%.1f".format(alur4)}"
+
+    // Konversi ke FloatArray untuk penyimpanan
+    fun toAlurArray(): FloatArray = floatArrayOf(alur1, alur2, alur3, alur4)
+}

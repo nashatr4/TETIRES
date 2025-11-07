@@ -170,24 +170,29 @@ class MainViewModel(
         }
     }
 
-    // Di MainViewModel, fungsi updateCheckPartial sudah benar:
-
-    fun updateCheckPartial(idCek: Long, posisi: PosisiBan, ukuran: Float) = viewModelScope.launch {
-        if (!TireStatusHelper.isValidUkuran(ukuran)) {
-            _errorMessage.value = "Ukuran tidak valid: $ukuran mm"
-            return@launch
+    fun updateCheckPartial(idCek: Long, posisi: PosisiBan, alurValues: FloatArray) {
+        if (alurValues.size != 4) {
+            _errorMessage.value = "Harus 4 nilai alur"
+            return
         }
-        _isLoading.value = true
-        try {
-            val result = repository.updateCheckPartial(idCek, posisi, ukuran)
 
-            // ✅ Sekarang result.statusMessage dan result.complete tersedia
-            _statusMessage.value = result.statusMessage
-            _updateCompleteEvent.value = Event(result.complete)
-            _errorMessage.value = null
-        } catch (e: Exception) {
-            _errorMessage.value = "Gagal update pengecekan: ${e.message}"
-            _statusMessage.value = null
+        if (alurValues.any { !TireStatusHelper.isValidUkuran(it) }) {
+            _errorMessage.value = "Ada nilai alur ban yang tidak valid"
+            return
+        }
+
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                val result = repository.updateCheckPartial(idCek, posisi, alurValues)
+                _statusMessage.value = result.statusMessage
+                _updateCompleteEvent.value = Event(result.complete)
+                _errorMessage.value = null
+            } catch (e: Exception) {
+                _errorMessage.value = "Gagal update pengecekan: ${e.message}"
+                _statusMessage.value = null
+            }
+            _isLoading.value = false
         }
         _isLoading.value = false
     }
@@ -211,25 +216,6 @@ class MainViewModel(
                 _currentBusChecks.value = checks
             }
         }
-    }
-
-    private fun PengecekanWithBus.toPengecekanRingkas(): PengecekanRingkas {
-        val tanggalReadable = DateUtils.formatDate(tanggalMs)  // WIB, Locale ID
-        val waktuReadable = DateUtils.formatTime(tanggalMs)    // WIB, Locale ID
-
-        return PengecekanRingkas(
-            idCek = idPengecekan,
-            tanggalCek = tanggalMs,
-            tanggalReadable = tanggalReadable,
-            waktuReadable = waktuReadable,
-            namaBus = namaBus,
-            platNomor = platNomor,
-            statusDka = statusDka == true,
-            statusDki = statusDki == true,
-            statusBka = statusBka == true,
-            statusBki = statusBki == true,
-            summaryStatus = TireStatusHelper.summaryStatus(statusDka, statusDki, statusBka, statusBki)
-        )
     }
 
     fun loadCheckDetail(idCek: Long) {
@@ -297,7 +283,7 @@ class MainViewModel(
                 val result = repository.updateCheckPartial(
                     idPengecekan = 1L,
                     posisi = PosisiBan.DKA,
-                    ukuran = 1.4f
+                    alurValues = floatArrayOf(2.5f, 1.3f, 2.2f, 1.8f)
                 )
                 Log.d("TEST_RESULT", "Success=${result.complete}, Message=${result.statusMessage}")
             } catch (e: Exception) {

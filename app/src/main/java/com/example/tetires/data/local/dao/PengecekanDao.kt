@@ -4,6 +4,7 @@ import androidx.room.*
 import com.example.tetires.data.local.entity.Pengecekan
 import com.example.tetires.data.local.entity.PengecekanWithBus
 import com.example.tetires.data.local.entity.PengecekanByBusWithBus
+import com.example.tetires.data.local.entity.PengecekanWithDetails
 import com.example.tetires.data.model.LogItem
 import kotlinx.coroutines.flow.Flow
 
@@ -90,5 +91,11 @@ interface PengecekanDao {
 """)
     fun getLast10ChecksAllBus(): Flow<List<PengecekanWithBus>>
 
+    @Transaction
+    @Query("SELECT * FROM pengecekan WHERE idPengecekan = :pengecekanId")
+    suspend fun getPengecekanWithDetails(pengecekanId: Long): PengecekanWithDetails?
 
+    @Transaction
+    @Query("SELECT * FROM pengecekan WHERE idPengecekan = :pengecekanId")
+    fun getPengecekanWithDetailsFlow(pengecekanId: Long): Flow<PengecekanWithDetails?>
 }

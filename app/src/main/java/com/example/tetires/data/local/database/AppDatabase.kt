@@ -7,9 +7,11 @@ import androidx.room.RoomDatabase
 import com.example.tetires.data.local.dao.BusDao
 import com.example.tetires.data.local.dao.DetailBanDao
 import com.example.tetires.data.local.dao.PengecekanDao
+import com.example.tetires.data.local.dao.PengukuranAlurDao
 import com.example.tetires.data.local.entity.Bus
 import com.example.tetires.data.local.entity.DetailBan
 import com.example.tetires.data.local.entity.Pengecekan
+import com.example.tetires.data.local.entity.PengukuranAlur
 
 /**
  * Room Database utama aplikasi.
@@ -18,9 +20,10 @@ import com.example.tetires.data.local.entity.Pengecekan
     entities = [
         Bus::class,
         Pengecekan::class,
-        DetailBan::class
+        DetailBan::class,
+        PengukuranAlur::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -29,6 +32,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun busDao(): BusDao
     abstract fun pengecekanDao(): PengecekanDao
     abstract fun detailBanDao(): DetailBanDao
+    abstract fun pengukuranAlurDao(): PengukuranAlurDao
 
     companion object {
         @Volatile
