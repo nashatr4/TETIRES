@@ -165,6 +165,17 @@ class TetiresRepository(
             detail.posisiBan to pengukuranAlurDao.getPengukuranByDetailBanId(detail.idDetail)
         }
 
+        fun createAlurBan(pengukuran: PengukuranAlur?): AlurBan? {
+            return pengukuran?.let {
+                AlurBan(
+                    alur1 = it.alur1,
+                    alur2 = it.alur2,
+                    alur3 = it.alur3,
+                    alur4 = it.alur4
+                )
+            }
+        }
+
         return CheckDetail(
             idCek = check.idPengecekan,
             tanggalCek = check.tanggalMs,
@@ -172,24 +183,18 @@ class TetiresRepository(
             waktuReadable = DateUtils.formatTime(check.waktuMs),
             namaBus = bus.namaBus,
             platNomor = bus.platNomor,
+
             // Status ban
             statusDka = detailMap["DKA"]?.status ?: false,
             statusDki = detailMap["DKI"]?.status ?: false,
             statusBka = detailMap["BKA"]?.status ?: false,
             statusBki = detailMap["BKI"]?.status ?: false,
+
             // Rata-rata kedalaman (dari 4 alur)
-            ukDka = pengukuranMap["DKA"]?.let {
-                listOfNotNull(it.alur1, it.alur2, it.alur3, it.alur4).average().toFloat()
-            } ?: 0f,
-            ukDki = pengukuranMap["DKI"]?.let {
-                listOfNotNull(it.alur1, it.alur2, it.alur3, it.alur4).average().toFloat()
-            } ?: 0f,
-            ukBka = pengukuranMap["BKA"]?.let {
-                listOfNotNull(it.alur1, it.alur2, it.alur3, it.alur4).average().toFloat()
-            } ?: 0f,
-            ukBki = pengukuranMap["BKI"]?.let {
-                listOfNotNull(it.alur1, it.alur2, it.alur3, it.alur4).average().toFloat()
-            } ?: 0f
+            alurDka = createAlurBan(pengukuranMap["DKA"]),
+            alurDki = createAlurBan(pengukuranMap["DKI"]),
+            alurBka = createAlurBan(pengukuranMap["BKA"]),
+            alurBki = createAlurBan(pengukuranMap["BKI"]),
         )
     }
 

@@ -216,25 +216,6 @@ class MainViewModel(
         }
     }
 
-    private fun PengecekanWithBus.toPengecekanRingkas(): PengecekanRingkas {
-        val dateFormat = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale("id", "ID"))
-        val readableDate = dateFormat.format(Date(tanggalMs))
-
-        return PengecekanRingkas(
-            idCek = idPengecekan,
-            tanggalCek = tanggalMs,
-            tanggalReadable = readableDate,
-            waktuReadable = readableDate,
-            namaBus = namaBus,
-            platNomor = platNomor,
-            statusDka = statusDka,
-            statusDki = statusDki,
-            statusBka = statusBka,
-            statusBki = statusBki,
-            summaryStatus = TireStatusHelper.summaryStatus(statusDka, statusDki, statusBka, statusBki)
-        )
-    }
-
     fun loadCheckDetail(idCek: Long) {
         viewModelScope.launch {
             _isLoading.value = true

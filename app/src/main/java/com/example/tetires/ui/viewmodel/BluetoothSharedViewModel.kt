@@ -49,6 +49,7 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
     private val database = AppDatabase.getInstance(application)
     private val pengecekanDao = database.pengecekanDao()
     private val detailBanDao = database.detailBanDao()
+    private val pengukuranAlurDao = database.pengukuranAlurDao()
 
     // Bluetooth Helper (single instance)
     private val bluetoothHelper = BluetoothHelper(application)
@@ -81,7 +82,7 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
     private val _statusMessage = MutableStateFlow<String?>(null)
     val statusMessage: StateFlow<String?> = _statusMessage.asStateFlow()
 
-    // Data buffer untuk scan satu posisi
+    // Buffer untuk 4 alur
     private val scanBuffer = mutableListOf<String>()
 
     // Counter data yang masuk
@@ -109,6 +110,7 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
             // Jika dalam mode CEK_BAN dan state SCANNING
             if (_appMode.value == AppMode.CEK_BAN && _cekBanState.value == CekBanState.SCANNING) {
                 scanBuffer.add(rawData)
+
                 _dataCount.value = scanBuffer.size
 
                 // Auto-stop jika data cukup (misal 500-1000 baris untuk 1 posisi)
@@ -266,7 +268,7 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
     /**
      * Process data yang sudah di-scan untuk posisi saat ini
      */
-    private fun processCurrentScan() {
+    fun processCurrentScan() {
         if (scanBuffer.isEmpty()) {
             _statusMessage.value = "Tidak ada data untuk diproses"
             _cekBanState.value = CekBanState.ERROR
@@ -314,13 +316,18 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
                         adcMean = data.getDouble("adc_mean").toFloat(),
                         adcStd = data.getDouble("adc_std").toFloat(),
                         voltageMv = data.getDouble("voltage_mV").toFloat(),
-                        thicknessMm = data.getDouble("thickness_mm").toFloat(),
                         isWorn = data.getBoolean("is_worn"),
-                        dataCount = data.getInt("pixel_count")
+                        dataCount = data.getInt("pixel_count"),
+
+                        alur1 = data.getDouble("alur1").toFloat(),
+                        alur2 = data.getDouble("alur2").toFloat(),
+                        alur3 = data.getDouble("alur3").toFloat(),
+                        alur4 = data.getDouble("alur4").toFloat()
                     )
 
                     val status = if (result.isWorn) "AUS ❌" else "OK ✅"
-                    addToTerminal("${currentPosisi!!.label}: ${result.thicknessMm} mm - $status")
+                    val minGroove = result.minGroove
+                    addToTerminal("${currentPosisi!!.label}: Min: ${minGroove} mm - $status")
 
                     withContext(Dispatchers.Main) {
                         // Simpan hasil ke map
@@ -329,11 +336,11 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
                         _scanResults.value = updatedResults
 
                         _cekBanState.value = CekBanState.RESULT_READY
-                        _statusMessage.value = "${currentPosisi!!.label}: ${result.thicknessMm} mm $status"
+                        _statusMessage.value = "${currentPosisi!!.label}: Min ${minGroove} mm $status"
                     }
 
                 } else {
-                    // ✅ Python returned success=false
+                    // Python returned success=false
                     addToTerminal("ERROR: $message")
 
                     withContext(Dispatchers.Main) {
@@ -399,65 +406,72 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
                 addToTerminal("Pengecekan ID: $currentPengecekanId")
                 addToTerminal("Results count: ${results.size}")
 
-                // ✅ 1. Ambil pengecekan yang ada
-                val pengecekan = pengecekanDao.getPengecekanById(currentPengecekanId!!)
-                if (pengecekan == null) {
-                    addToTerminal("ERROR: Pengecekan tidak ditemukan")
-                    withContext(Dispatchers.Main) {
-                        _statusMessage.value = "Error: Data pengecekan tidak ditemukan"
+                val statusMap = mutableMapOf<PosisiBan, Boolean?>()
+                for((posisi, result) in results) {
+                    val statusBan: Boolean? = result.isWorn
+                    statusMap[posisi] = statusBan
+
+                    // Update DetailBan
+                    var detailBan = detailBanDao.getDetailByPosisi(
+                        currentPengecekanId!!,
+                        posisi.name // "DKA", "DKI", dll.
+                    )
+
+                    if (detailBan == null) {
+                        detailBan = DetailBan(
+                            pengecekanId = currentPengecekanId!!,
+                            posisiBan = posisi.name,
+                            status = statusBan
+                        )
+                    } else {
+                        detailBan = detailBan.copy(status = statusBan)
                     }
-                    return@launch
+
+                    val detailBanId = detailBanDao.insertDetailBan(detailBan)
+                    addToTerminal("Saved DetailBan for ${posisi.name} (ID: $detailBanId)")
+
+                    var pengukuran = pengukuranAlurDao.getPengukuranByDetailBanId(detailBanId)
+
+                    if (pengukuran == null) {
+                        // Belum ada, buat baru
+                        pengukuran = com.example.tetires.data.local.entity.PengukuranAlur(
+                            detailBanId = detailBanId,
+                            alur1 = result.alur1,
+                            alur2 = result.alur2,
+                            alur3 = result.alur3,
+                            alur4 = result.alur4
+                        )
+                    } else {
+                        pengukuran = pengukuran.copy(
+                            alur1 = result.alur1,
+                            alur2 = result.alur2,
+                            alur3 = result.alur3,
+                            alur4 = result.alur4
+                        )
+                    }
+
+                    pengukuranAlurDao.insertPengukuran(pengukuran)
+                    addToTerminal("Saved PengukuranAlur for ${posisi.name}")
                 }
 
-                // ✅ 2. Update status di Pengecekan (ringkasan boolean)
-                val updatedPengecekan = pengecekan.copy(
-                    statusDka = results[PosisiBan.DKA]?.isWorn,
-                    statusDki = results[PosisiBan.DKI]?.isWorn,
-                    statusBka = results[PosisiBan.BKA]?.isWorn,
-                    statusBki = results[PosisiBan.BKI]?.isWorn
-                )
-                pengecekanDao.updatePengecekan(updatedPengecekan)
-                addToTerminal("✓ Pengecekan updated")
+                // Ambil pengecekan yang ada
+                val pengecekan = pengecekanDao.getPengecekanById(currentPengecekanId!!)
+                if (pengecekan != null) {
 
-                // ✅ 3. Ambil atau buat DetailBan
-                val existingDetails = detailBanDao.getDetailsByCheckId(currentPengecekanId!!)
-                val existingDetail = existingDetails.firstOrNull()
-
-                val detailBan = DetailBan(
-                    idDetail = existingDetail?.idDetail ?: 0L,
-                    pengecekanId = currentPengecekanId!!,
-                    // ✅ Simpan ukuran (thickness_mm dari Python)
-                    ukDka = results[PosisiBan.DKA]?.thicknessMm,
-                    ukDki = results[PosisiBan.DKI]?.thicknessMm,
-                    ukBka = results[PosisiBan.BKA]?.thicknessMm,
-                    ukBki = results[PosisiBan.BKI]?.thicknessMm,
-                    // ✅ Simpan status aus (redundant untuk query cepat)
-                    statusDka = results[PosisiBan.DKA]?.isWorn,
-                    statusDki = results[PosisiBan.DKI]?.isWorn,
-                    statusBka = results[PosisiBan.BKA]?.isWorn,
-                    statusBki = results[PosisiBan.BKI]?.isWorn
-                )
-
-                // ✅ 4. Insert atau update DetailBan
-                if (existingDetail == null) {
-                    detailBanDao.insertDetailBan(detailBan)
-                    addToTerminal("✓ DetailBan inserted")
-                } else {
-                    detailBanDao.updateDetailBan(detailBan)
-                    addToTerminal("✓ DetailBan updated")
+                    val updatedPengecekan = pengecekan.copy(
+                        statusDka = statusMap[PosisiBan.DKA],
+                        statusDki = statusMap[PosisiBan.DKI],
+                        statusBka = statusMap[PosisiBan.BKA],
+                        statusBki = statusMap[PosisiBan.BKI]
+                    )
+                    pengecekanDao.updatePengecekan(updatedPengecekan)
+                    addToTerminal("Updated Pengecekan summary")
                 }
-
-                // ✅ 5. Log hasil
-                addToTerminal("--- SAVED DATA ---")
-                results.forEach { (posisi, result) ->
-                    val status = if (result.isWorn) "AUS" else "OK"
-                    addToTerminal("${posisi.label}: ${result.thicknessMm} mm ($status)")
-                }
-                addToTerminal("✓ Database save complete")
 
                 withContext(Dispatchers.Main) {
                     _cekBanState.value = CekBanState.SAVED
                     _statusMessage.value = "Semua data berhasil disimpan!"
+                    addToTerminal("=== DATABASE SAVE COMPLETE ===")
                 }
 
             } catch (e: Exception) {
@@ -525,7 +539,20 @@ data class TireScanResult(
     val adcMean: Float,
     val adcStd: Float,
     val voltageMv: Float,
-    val thicknessMm: Float,
     val isWorn: Boolean,
-    val dataCount: Int
-)
+    val dataCount: Int,
+
+    val alur1: Float,
+    val alur2: Float,
+    val alur3: Float,
+    val alur4: Float,
+) {
+    val minGroove: Float
+        get() = listOf(alur1, alur2, alur3, alur4).minOrNull() ?: 0f
+
+    val groovesFormatted: String
+        get() = "${"%.1f".format(alur1)} | ${"%.1f".format(alur2)} | ${"%.1f".format(alur3)} | ${"%.1f".format(alur4)}"
+
+    // Konversi ke FloatArray untuk penyimpanan
+    fun toAlurArray(): FloatArray = floatArrayOf(alur1, alur2, alur3, alur4)
+}
