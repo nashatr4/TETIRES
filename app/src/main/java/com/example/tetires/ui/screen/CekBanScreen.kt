@@ -328,7 +328,7 @@ fun ResultIcon(
         val (icon, color) = when {
             result != null -> {
                 // Kalau tebal < 1.6, paksa merah
-                if (result.thicknessMm < 1.6) Icons.Default.Cancel to Color(0xFFEF4444)
+                if (result.isWorn) Icons.Default.Cancel to Color(0xFFEF4444)
                 else Icons.Default.CheckCircle to Color(0xFF10B981)
             }
             state == CekBanState.SCANNING || state == CekBanState.PROCESSING ->

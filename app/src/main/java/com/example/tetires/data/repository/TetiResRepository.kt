@@ -116,19 +116,19 @@ class TetiresRepository(
         pengecekanDao.updatePengecekan(updatedCheck)
 
         // ✅ Cek apakah semua ban sudah diisi
-        val complete = listOf(
-            updated.ukDka,
-            updated.ukDki,
-            updated.ukBka,
-            updated.ukBki
+        val iscomplete = listOf(
+            updatedCheck.statusDka,
+            updatedCheck.statusDki,
+            updatedCheck.statusBka,
+            updatedCheck.statusBki,
         ).all { it != null }
 
         // ✅ Buat status message
-        val statusText = if (ukuran < 1.6f) "AUS ❌" else "OK ✅"
-        val statusMessage = "Update ${posisi.label}: ${ukuran}mm ($statusText)"
+        val statusMessage = if (isAus) "Ban aus (kurang dari 1.6mm) ❌" else "Ban aman (>1.6mm) ✅"
 
-        return UpdateCheckResult(
-            complete = complete,
+        return UpdateResult(
+            complete = iscomplete,
+            idCek = idPengecekan,
             statusMessage = statusMessage
         )
     }
@@ -293,19 +293,6 @@ class TetiresRepository(
         }
     }
 
-    suspend fun syncStatusWithDetail(idPengecekan: Long) {
-        val detail = detailBanDao.getDetailBanById(idPengecekan) ?: return
-        val pengecekan = pengecekanDao.getPengecekanById(idPengecekan) ?: return
-
-        val updated = pengecekan.copy(
-            statusDka = TireStatusHelper.isAus(detail.ukDka),
-            statusDki = TireStatusHelper.isAus(detail.ukDki),
-            statusBka = TireStatusHelper.isAus(detail.ukBka),
-            statusBki = TireStatusHelper.isAus(detail.ukBki)
-        )
-
-        pengecekanDao.updatePengecekan(updated)
-    }
 
     // ========== LOGIKA STATUS ==========
     private fun computeSummaryStatus(
