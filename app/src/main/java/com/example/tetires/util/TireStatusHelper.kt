@@ -103,8 +103,10 @@ object TireStatusHelper {
     }
 
     fun summaryStatus(
-        dka: Boolean?, dki: Boolean?,
-        bka: Boolean?, bki: Boolean?
+        dka: Boolean?,
+        dki: Boolean?,
+        bka: Boolean?,
+        bki: Boolean?
     ): String {
         val list = listOf(dka, dki, bka, bki)
         return when {
@@ -137,7 +139,36 @@ object TireStatusHelper {
             ausCount == 0 -> "Semua alur aman (>1.6mm)"
             ausCount == values.size -> "Semua alur aus (≤1.6mm)"
             else -> "$ausCount dari ${values.size} alur aus (min: ${formatUkuran(minValue)})"
+
+        // ⏳ Jika ada yang null → belum selesai
+        if (list.any { it == null }) {
+            return "Belum Selesai"
+        }
+
+        // ❌ Jika ada minimal 1 ban aus (true) → AUS
+        if (list.any { it == true }) {
+            return "Aus"
+        }
+
+        // ✅ Jika SEMUA ban tidak aus (semua false) → TIDAK AUS
+        return "Tidak Aus"
+    }
+    fun getStatusColor(isAus: Boolean?): Long {
+        return when (isAus) {
+            true -> 0xFFEF4444  // Merah
+            false -> 0xFF10B981 // Hijau
+            else -> 0xFF6B7280  // Abu-abu
         }
     }
 
+    /**
+     * Get teks status
+     */
+    fun getStatusText(isAus: Boolean?): String {
+        return when (isAus) {
+            true -> "Aus"
+            false -> "Tidak Aus"
+            else -> "Belum Dicek"
+        }
+    }
 }

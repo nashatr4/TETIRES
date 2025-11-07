@@ -29,6 +29,9 @@ interface DetailBanDao {
 
     @Query("SELECT * FROM detail_ban WHERE pengecekanId = :pengecekanId AND posisiBan = :posisi LIMIT 1")
     fun getDetailByPosisiFlow(pengecekanId: Long, posisi: String): Flow<DetailBan?>
+    @Query("SELECT * FROM detail_ban WHERE pengecekanId = :id LIMIT 1")
+    suspend fun getDetailBanById(id: Long): DetailBan?
+
 
     @Delete
     suspend fun deleteDetailBan(detailBan: DetailBan)

@@ -8,7 +8,8 @@ import com.chaquo.python.Python
 import com.example.tetires.data.local.database.AppDatabase
 import com.example.tetires.data.local.entity.DetailBan
 import com.example.tetires.data.model.PosisiBan
-import com.example.tetires.util.BluetoothHelper
+import com.example.tetires.util.DeviceConnectionManager
+import com.example.tetires.util.DeviceType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,29 +18,16 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
-/**
- * State untuk proses CekBan
- */
 enum class CekBanState {
-    IDLE,              // Belum mulai, belum pilih posisi
-    WAITING_SCAN,      // User sudah pilih posisi, siap scan
-    SCANNING,          // Sedang scan (terima data)
-    PROCESSING,        // Processing data dengan Python
-    RESULT_READY,      // Hasil sudah keluar, belum disimpan
-    SAVED,             // Sudah disimpan ke DB
-    ERROR              // Terjadi error
+    IDLE, WAITING_SCAN, SCANNING, PROCESSING, RESULT_READY, SAVED, ERROR
 }
 
-/**
- * Mode operasi aplikasi
- */
 enum class AppMode {
-    TERMINAL,  // Mode terminal (free, tidak ada konteks)
-    CEK_BAN    // Mode cek ban (guided, ada konteks bus & posisi)
+    TERMINAL, CEK_BAN
 }
 
 /**
- * Shared ViewModel untuk Terminal dan CekBan
+ * 🔥 UPDATED: Shared ViewModel dengan DeviceConnectionManager
  */
 class BluetoothSharedViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -47,45 +35,47 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
 
     // Database
     private val database = AppDatabase.getInstance(application)
+    private val busDao = database.busDao()
     private val pengecekanDao = database.pengecekanDao()
     private val detailBanDao = database.detailBanDao()
     private val pengukuranAlurDao = database.pengukuranAlurDao()
 
-    // Bluetooth Helper (single instance)
-    private val bluetoothHelper = BluetoothHelper(application)
+    private val repository = com.example.tetires.data.repository.TetiresRepository(
+        busDao, pengecekanDao, detailBanDao
+    )
 
-    // Python instance
+    // 🔥 NEW: Device Connection Manager
+    private val deviceManager = DeviceConnectionManager(application)
+
+    // Python
     private val pythonInstance: Python = Python.getInstance()
-    private val processingModule by lazy {
-        pythonInstance.getModule("tire_processing")
-    }
+    private val processingModule by lazy { pythonInstance.getModule("tire_processing") }
 
     // ===== STATE FLOWS =====
-
-    // Mode operasi saat ini
     private val _appMode = MutableStateFlow(AppMode.TERMINAL)
     val appMode: StateFlow<AppMode> = _appMode.asStateFlow()
 
-    // Status koneksi Bluetooth
     private val _isConnected = MutableStateFlow(false)
     val isConnected: StateFlow<Boolean> = _isConnected.asStateFlow()
 
-    // Terminal log text
+    private val _deviceInfo = MutableStateFlow("No device")
+    val deviceInfo: StateFlow<String> = _deviceInfo.asStateFlow()
+
+    private val _activeDeviceType = MutableStateFlow(DeviceType.NONE)
+    val activeDeviceType: StateFlow<DeviceType> = _activeDeviceType.asStateFlow()
+
     private val _terminalText = MutableStateFlow("")
     val terminalText: StateFlow<String> = _terminalText.asStateFlow()
 
-    // State CekBan
     private val _cekBanState = MutableStateFlow(CekBanState.IDLE)
     val cekBanState: StateFlow<CekBanState> = _cekBanState.asStateFlow()
 
-    // Status message untuk user
     private val _statusMessage = MutableStateFlow<String?>(null)
     val statusMessage: StateFlow<String?> = _statusMessage.asStateFlow()
 
     // Buffer untuk 4 alur
     private val scanBuffer = mutableListOf<String>()
 
-    // Counter data yang masuk
     private val _dataCount = MutableStateFlow(0)
     val dataCount: StateFlow<Int> = _dataCount.asStateFlow()
 
@@ -94,17 +84,25 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
     private var currentBusId: Long? = null
     private var currentPosisi: PosisiBan? = null
 
-    // Hasil scan per posisi (sementara, sebelum disimpan)
     private val _scanResults = MutableStateFlow<Map<PosisiBan, TireScanResult>>(emptyMap())
     val scanResults: StateFlow<Map<PosisiBan, TireScanResult>> = _scanResults.asStateFlow()
 
     init {
-        setupBluetoothCallbacks()
+        setupDeviceManagerCallbacks()
+
+        // 🔥 Auto-detect devices saat init
+        viewModelScope.launch {
+            kotlinx.coroutines.delay(500)
+            deviceManager.autoDetectDevices()
+        }
     }
 
-    private fun setupBluetoothCallbacks() {
-        // Callback saat data diterima
-        bluetoothHelper.onDataReceived = { rawData ->
+    /**
+     * 🔥 Setup callbacks dari DeviceManager
+     */
+    private fun setupDeviceManagerCallbacks() {
+        // Data received callback
+        deviceManager.onDataReceived = { rawData ->
             addToTerminal(rawData)
 
             // Jika dalam mode CEK_BAN dan state SCANNING
@@ -113,54 +111,76 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
 
                 _dataCount.value = scanBuffer.size
 
-                // Auto-stop jika data cukup (misal 500-1000 baris untuk 1 posisi)
-                if (scanBuffer.size >= 500) {
-                    Log.d(TAG, "Buffer cukup (${scanBuffer.size} baris), auto-processing...")
+                if (scanBuffer.size == 1110) {
+                    Log.d(TAG, "Buffer penuh (1110 data), proses otomatis!")
+
                     processCurrentScan()
                 }
             }
         }
 
-        // Callback status koneksi
-        bluetoothHelper.onStatusChange = { status ->
-            val connected = status.contains("Connected", ignoreCase = true)
-            _isConnected.value = connected
+        // Status change callback
+        deviceManager.onStatusChange = { status ->
+            _statusMessage.value = status
             addToTerminal("SYSTEM: $status")
+        }
 
-            // Jika mode CekBan dan berhasil connect
-            if (_appMode.value == AppMode.CEK_BAN && connected) {
-                _statusMessage.value = "Bluetooth terhubung! Silakan pilih posisi ban."
+        // Debug log callback (untuk Terminal)
+        deviceManager.onDebugLog = { debugMsg ->
+            if (_appMode.value == AppMode.TERMINAL) {
+                addToTerminal(debugMsg)
+            }
+        }
+
+        // Collect connection state
+        viewModelScope.launch {
+            deviceManager.isConnected.collect { connected ->
+                _isConnected.value = connected
+
+                if (_appMode.value == AppMode.CEK_BAN && connected) {
+                    if (_cekBanState.value == CekBanState.IDLE) {
+                        _statusMessage.value = "Device terhubung! Pilih posisi ban untuk scan."
+                    }
+                }
+            }
+        }
+
+        // Collect device info
+        viewModelScope.launch {
+            deviceManager.deviceInfo.collect { info ->
+                _deviceInfo.value = info
+            }
+        }
+
+        // Collect active device type
+        viewModelScope.launch {
+            deviceManager.activeDevice.collect { deviceType ->
+                _activeDeviceType.value = deviceType
+                addToTerminal("Active Device: ${deviceType.name}")
             }
         }
     }
 
     // ===== TERMINAL MODE FUNCTIONS =====
 
-    /**
-     * Switch ke mode Terminal (free mode)
-     */
     fun switchToTerminalMode() {
         if (_appMode.value != AppMode.TERMINAL) {
             addToTerminal("\n=== MODE TERMINAL (FREE MODE) ===")
             _appMode.value = AppMode.TERMINAL
             resetCekBanContext()
-            _statusMessage.value = "Mode Terminal aktif. Data tidak akan disimpan ke database."
+            _statusMessage.value = "Mode Terminal aktif"
         }
     }
 
-    /**
-     * Connect manual (untuk Terminal mode)
-     */
     fun connectBluetooth() {
-        addToTerminal("SYSTEM: Menghubungkan Bluetooth...")
-        bluetoothHelper.connect()
+        addToTerminal("SYSTEM: Manual connect triggered...")
+        deviceManager.manualConnect()
     }
 
     fun disconnectBluetooth() {
-        bluetoothHelper.disconnect()
-        _isConnected.value = false
+        deviceManager.disconnect()
 
-        // Jika sedang dalam proses CekBan, reset
+        // Jika sedang scanning, set error
         if (_appMode.value == AppMode.CEK_BAN && _cekBanState.value == CekBanState.SCANNING) {
             _cekBanState.value = CekBanState.ERROR
             _statusMessage.value = "Koneksi terputus saat scanning"
@@ -168,15 +188,12 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
     }
 
     fun sendCommand(command: String) {
-        bluetoothHelper.send(command)
+        deviceManager.sendCommand(command)
         addToTerminal("SENT: $command")
     }
 
     // ===== CEK BAN MODE FUNCTIONS =====
 
-    /**
-     * Masuk ke mode CekBan dengan konteks bus & pengecekan
-     */
     fun enterCekBanMode(busId: Long, pengecekanId: Long) {
         _appMode.value = AppMode.CEK_BAN
         currentBusId = busId
@@ -190,16 +207,15 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
 
         // Auto-connect jika belum connect
         if (!_isConnected.value) {
-            _statusMessage.value = "Menghubungkan Bluetooth..."
-            connectBluetooth()
+            _statusMessage.value = "Menghubungkan device..."
+            viewModelScope.launch {
+                deviceManager.autoDetectDevices()
+            }
         } else {
-            _statusMessage.value = "Silakan pilih posisi ban untuk scan"
+            _statusMessage.value = "Pilih posisi ban untuk scan"
         }
     }
 
-    /**
-     * User pilih posisi ban yang akan di-scan
-     */
     fun selectPositionToScan(posisi: PosisiBan) {
         if (_appMode.value != AppMode.CEK_BAN) {
             _statusMessage.value = "Error: Tidak dalam mode CekBan"
@@ -207,26 +223,20 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
         }
 
         if (!_isConnected.value) {
-            _statusMessage.value = "Error: Bluetooth belum terhubung"
+            _statusMessage.value = "Error: Device belum terhubung"
             return
         }
 
-        // Cek apakah posisi ini sudah di-scan
         if (_scanResults.value.containsKey(posisi)) {
             _statusMessage.value = "Posisi ${posisi.label} sudah di-scan. Scan ulang?"
-            // Bisa tambahkan konfirmasi dialog di UI
         }
 
         currentPosisi = posisi
         _cekBanState.value = CekBanState.WAITING_SCAN
-
-        _statusMessage.value = "Siap scan posisi ${posisi.label}. Tekan 'Mulai Scan'."
-        addToTerminal("\n--- POSISI TERPILIH: ${posisi.label} ---")
+        _statusMessage.value = "Siap scan ${posisi.label}. Tekan 'Mulai Scan'."
+        addToTerminal("\n--- POSISI: ${posisi.label} ---")
     }
 
-    /**
-     * Mulai scan posisi yang sudah dipilih
-     */
     fun startScan() {
         if (currentPosisi == null) {
             _statusMessage.value = "Error: Pilih posisi ban dulu"
@@ -234,32 +244,21 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
         }
 
         if (_cekBanState.value != CekBanState.WAITING_SCAN) {
-            _statusMessage.value = "Error: State tidak valid untuk mulai scan"
+            _statusMessage.value = "Error: State tidak valid"
             return
         }
 
-        // Reset buffer
         scanBuffer.clear()
         _dataCount.value = 0
-
-        // Mulai scan
         _cekBanState.value = CekBanState.SCANNING
-        _statusMessage.value = "Scanning posisi ${currentPosisi!!.label}... Dekatkan sensor ke ban"
+        _statusMessage.value = "Scanning ${currentPosisi!!.label}..."
 
-        // Kirim START command ke STM32
         sendCommand("START")
-
-        addToTerminal(">>> MULAI SCAN POSISI ${currentPosisi!!.label}")
+        addToTerminal(">>> MULAI SCAN ${currentPosisi!!.label}")
     }
 
-    /**
-     * Stop scan manual (atau auto-triggered setelah cukup data)
-     */
     fun stopScan() {
-        if (_cekBanState.value != CekBanState.SCANNING) {
-            return
-        }
-
+        if (_cekBanState.value != CekBanState.SCANNING) return
         sendCommand("STOP")
         _statusMessage.value = "Menghentikan scan..."
         processCurrentScan()
@@ -286,11 +285,14 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
 
         viewModelScope.launch(Dispatchers.Default) {
             try {
-                addToTerminal("\n=== PROCESSING ${currentPosisi!!.label} ===")
-                addToTerminal("Total lines: ${scanBuffer.size}")
+                val totalData = scanBuffer.size
+                Log.d(TAG, "Proses data: $totalData line")
+                _cekBanState.value = CekBanState.PROCESSING
 
-                // ✅ Convert to ArrayList explicitly
-                val javaList = java.util.ArrayList(scanBuffer.toList())
+                if (totalData == 0) {
+                    Log.e(TAG, "Gagal: belum ada data")
+                    return@launch
+                }
 
                 addToTerminal("Calling Python with ${javaList.size} lines...")
 
@@ -328,17 +330,22 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
                     val status = if (result.isWorn) "AUS ❌" else "OK ✅"
                     val minGroove = result.minGroove
                     addToTerminal("${currentPosisi!!.label}: Min: ${minGroove} mm - $status")
+                val javaList = java.util.ArrayList(scanBuffer.toList())
+                val pyList = com.chaquo.python.PyObject.fromJava(javaList)
 
-                    withContext(Dispatchers.Main) {
-                        // Simpan hasil ke map
-                        val updatedResults = _scanResults.value.toMutableMap()
-                        updatedResults[currentPosisi!!] = result
-                        _scanResults.value = updatedResults
+                Log.d(TAG, "Panggil Python dengan ${javaList.size} item...")
+                val resultJson = processingModule.callAttr("process_single_sensor", pyList).toString()
+                Log.d(TAG, "Hasil: $resultJson")
+
+                val json = JSONObject(resultJson)
 
                         _cekBanState.value = CekBanState.RESULT_READY
                         _statusMessage.value = "${currentPosisi!!.label}: Min ${minGroove} mm $status"
                     }
 
+// Cek validasi
+                val thicknessMm = if (rawThickness.isFinite() && rawThickness > 0) {
+                    rawThickness.toFloat()
                 } else {
                     // Python returned success=false
                     addToTerminal("ERROR: $message")
@@ -349,44 +356,53 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
                     }
                 }
 
-            } catch (e: Exception) {
-                Log.e(TAG, "Processing error: ${e.message}", e)
-                addToTerminal("EXCEPTION: ${e.javaClass.simpleName}")
-                addToTerminal("Message: ${e.message}")
-                e.printStackTrace()
+// Buat objek hasil, tapi tanpa nilai 0 palsu
+                val result = TireScanResult(
+                    posisi = currentPosisi ?: PosisiBan.DKA,
+                    adcMean = json.optDouble("adc_mean", Double.NaN).toFloat(),
+                    adcStd = json.optDouble("adc_std", Double.NaN).toFloat(),
+                    voltageMv = json.optDouble("voltage_mv", Double.NaN).toFloat(),
+                    thicknessMm = thicknessMm,
+                    isWorn = json.optBoolean("is_worn", false),
+                    dataCount = totalData
+                )
+
+
+                val updatedResults = _scanResults.value.toMutableMap()
+                updatedResults[currentPosisi!!] = result
+                _scanResults.value = updatedResults
 
                 withContext(Dispatchers.Main) {
-                    _cekBanState.value = CekBanState.ERROR
-                    _statusMessage.value = "Gagal memproses: ${e.message}"
+                    addToTerminal(
+                        """
+                        === HASIL ${currentPosisi?.label} ===
+                        Mean ADC: ${result.adcMean}
+                        Tegangan: ${result.voltageMv} mV
+                        Ketebalan: ${result.thicknessMm} mm
+                        Status: ${if (result.isWorn) "AUS" else "OK"}
+                        ===========================
+                        """.trimIndent()
+                    )
+                    _cekBanState.value = CekBanState.RESULT_READY
                 }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error proses: ${e.message}", e)
             }
         }
     }
 
-    /**
-     * Konfirmasi hasil scan dan lanjut ke posisi berikutnya
-     */
     fun confirmScanResult() {
-        if (_cekBanState.value != CekBanState.RESULT_READY) {
-            return
-        }
+        if (_cekBanState.value != CekBanState.RESULT_READY) return
 
         val posLabel = currentPosisi?.label ?: "Unknown"
-        addToTerminal("✓ Hasil ${posLabel} dikonfirmasi\n")
+        addToTerminal("✓ Hasil $posLabel dikonfirmasi\n")
 
-        // Reset untuk scan berikutnya
         currentPosisi = null
         scanBuffer.clear()
         _dataCount.value = 0
-
-        // ✅ Kembali ke IDLE agar user bisa pilih posisi lain
         _cekBanState.value = CekBanState.IDLE
-        _statusMessage.value = "Pilih posisi ban berikutnya atau simpan semua"
+        _statusMessage.value = "Pilih posisi berikutnya atau simpan semua"
     }
-
-    /**
-     * Simpan semua hasil scan ke database
-     */
 
     fun saveAllResults() {
         val results = _scanResults.value
@@ -403,8 +419,6 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 addToTerminal("\n=== SAVING TO DATABASE ===")
-                addToTerminal("Pengecekan ID: $currentPengecekanId")
-                addToTerminal("Results count: ${results.size}")
 
                 val statusMap = mutableMapOf<PosisiBan, Boolean?>()
                 for((posisi, result) in results) {
@@ -425,6 +439,12 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
                         )
                     } else {
                         detailBan = detailBan.copy(status = statusBan)
+                val pengecekan = pengecekanDao.getPengecekanById(currentPengecekanId!!)
+                if (pengecekan == null) {
+                    addToTerminal("ERROR: Pengecekan tidak ditemukan")
+                    withContext(Dispatchers.Main) {
+                        _statusMessage.value = "Error: Data tidak ditemukan"
+                        _cekBanState.value = CekBanState.ERROR
                     }
 
                     val detailBanId = detailBanDao.insertDetailBan(detailBan)
@@ -477,7 +497,6 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
             } catch (e: Exception) {
                 Log.e(TAG, "Error saving: ${e.message}", e)
                 addToTerminal("ERROR DB: ${e.message}")
-                e.printStackTrace()
 
                 withContext(Dispatchers.Main) {
                     _statusMessage.value = "Gagal menyimpan: ${e.message}"
@@ -487,11 +506,6 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
         }
     }
 
-
-
-    /**
-     * Reset context CekBan (keluar dari mode CekBan)
-     */
     fun resetCekBanContext() {
         currentPengecekanId = null
         currentBusId = null
@@ -518,22 +532,16 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
         _terminalText.value = ""
     }
 
-
     fun clearStatusMessage() {
         _statusMessage.value = null
     }
 
     override fun onCleared() {
         super.onCleared()
-        bluetoothHelper.disconnect()
+        deviceManager.cleanup()
     }
 }
 
-
-
-/**
- * Data class untuk hasil scan satu posisi ban
- */
 data class TireScanResult(
     val posisi: PosisiBan,
     val adcMean: Float,

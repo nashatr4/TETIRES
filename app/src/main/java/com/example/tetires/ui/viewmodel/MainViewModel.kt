@@ -9,6 +9,7 @@ import com.example.tetires.data.local.entity.Bus
 import com.example.tetires.data.local.entity.PengecekanWithBus
 import com.example.tetires.data.model.*
 import com.example.tetires.data.repository.TetiresRepository
+import com.example.tetires.util.DateUtils
 import com.example.tetires.util.DownloadHelper
 import com.example.tetires.util.TireStatusHelper
 import kotlinx.coroutines.Dispatchers
@@ -193,6 +194,7 @@ class MainViewModel(
             }
             _isLoading.value = false
         }
+        _isLoading.value = false
     }
 
     fun searchLogs(query: String? = null, startDate: Long? = null, endDate: Long? = null) {
@@ -283,7 +285,7 @@ class MainViewModel(
                     posisi = PosisiBan.DKA,
                     alurValues = floatArrayOf(2.5f, 1.3f, 2.2f, 1.8f)
                 )
-                Log.d("TEST_RESULT", "Success=${result.complete}, Message=${result.statusMessage ?: "null"}")
+                Log.d("TEST_RESULT", "Success=${result.complete}, Message=${result.statusMessage}")
             } catch (e: Exception) {
                 Log.e("TEST_RESULT", "Gagal: ${e.message}")
             }

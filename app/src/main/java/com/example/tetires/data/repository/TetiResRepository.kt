@@ -115,17 +115,21 @@ class TetiresRepository(
         }
         pengecekanDao.updatePengecekan(updatedCheck)
 
-        val isComplete = listOf(
-            updatedCheck.statusDka,
-            updatedCheck.statusDki,
-            updatedCheck.statusBka,
-            updatedCheck.statusBki
+        // ✅ Cek apakah semua ban sudah diisi
+        val complete = listOf(
+            updated.ukDka,
+            updated.ukDki,
+            updated.ukBka,
+            updated.ukBki
         ).all { it != null }
 
-        return UpdateResult(
-            complete = isComplete,
-            idCek = idPengecekan,
-            statusMessage = if (isAus) "Ban aus (≤1.6mm)" else "Ban aman (>1.6mm)"
+        // ✅ Buat status message
+        val statusText = if (ukuran < 1.6f) "AUS ❌" else "OK ✅"
+        val statusMessage = "Update ${posisi.label}: ${ukuran}mm ($statusText)"
+
+        return UpdateCheckResult(
+            complete = complete,
+            statusMessage = statusMessage
         )
     }
 
@@ -218,20 +222,17 @@ class TetiresRepository(
                 val q = qRaw.lowercase()
                 val readable = DateUtils.formatDate(item.tanggalMs).lowercase()
 
-                // Compute summary status
                 val summaryStatus = computeSummaryStatus(
                     item.statusDka, item.statusDki,
                     item.statusBka, item.statusBki
                 )
 
-                // Status matching
                 val statusMatch = when {
                     q in listOf("aus", "a u s") -> summaryStatus == "Aus"
                     q in listOf("tidak aus", "aman", "tidakaus") -> summaryStatus == "Tidak Aus"
                     else -> false
                 }
 
-                // Date matching
                 val dayMatch = q.matches(Regex("^\\d{1,2}\$")) && readable.contains(q)
                 val yearMatch = q.matches(Regex("^\\d{4}\$")) && readable.contains(q)
 
@@ -248,7 +249,6 @@ class TetiresRepository(
 
                 val dateMatch = dayMatch || yearMatch || monthMatch || readable.contains(q)
 
-                // Name/plate matching
                 val namaMatch = item.namaBus.contains(q, ignoreCase = true)
                 val platMatch = item.platNomor.contains(q, ignoreCase = true)
 
@@ -270,6 +270,7 @@ class TetiresRepository(
         }
     }
 
+    // ✅ FIX: Gunakan < 1.6f (bukan <=)
     suspend fun completeCheck(idCek: Long) {
         val detailList = detailBanDao.getDetailsByCheckId(idCek)
         for (detail in detailList) {
@@ -292,13 +293,21 @@ class TetiresRepository(
         }
     }
 
-    // ========== 🔥 LOGIKA STATUS YANG BENAR ==========
-    /**
-     * Rule (SESUAI PERMINTAAN):
-     * 1. Jika SEMUA ban (4 ban) TIDAK AUS (semua false) → "Tidak Aus" ✅
-     * 2. Jika ADA MINIMAL 1 ban AUS (minimal 1 true) → "Aus" ❌
-     * 3. Jika ada ban belum dicek (ada null) → "Belum Selesai" ⏳
-     */
+    suspend fun syncStatusWithDetail(idPengecekan: Long) {
+        val detail = detailBanDao.getDetailBanById(idPengecekan) ?: return
+        val pengecekan = pengecekanDao.getPengecekanById(idPengecekan) ?: return
+
+        val updated = pengecekan.copy(
+            statusDka = TireStatusHelper.isAus(detail.ukDka),
+            statusDki = TireStatusHelper.isAus(detail.ukDki),
+            statusBka = TireStatusHelper.isAus(detail.ukBka),
+            statusBki = TireStatusHelper.isAus(detail.ukBki)
+        )
+
+        pengecekanDao.updatePengecekan(updated)
+    }
+
+    // ========== LOGIKA STATUS ==========
     private fun computeSummaryStatus(
         dka: Boolean?,
         dki: Boolean?,

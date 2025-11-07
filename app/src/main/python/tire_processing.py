@@ -218,9 +218,7 @@ def process_ccd_raw_lines(raw_lines):
 def process_single_sensor(raw_lines):
     """
     Process single sensor data (untuk satu posisi ban)
-    Simplified version untuk state machine workflow
-
-    Returns: JSON with thickness calculation
+    Return JSON flat yang langsung dibaca Kotlin
     """
 
     try:
@@ -228,15 +226,13 @@ def process_single_sensor(raw_lines):
     except Exception as e:
         return json.dumps({
             "success": False,
-            "message": f"Conversion error: {str(e)}",
-            "result": None
+            "message": f"Conversion error: {str(e)}"
         })
 
     if not lines:
         return json.dumps({
             "success": False,
-            "message": "Empty data",
-            "result": None
+            "message": "Empty data"
         })
 
     # Parse voltage values
@@ -259,41 +255,41 @@ def process_single_sensor(raw_lines):
     if len(voltages) < 50:
         return json.dumps({
             "success": False,
-            "message": f"Insufficient data: {len(voltages)} pixels (need at least 50)",
-            "result": None
+            "message": f"Insufficient data: {len(voltages)} pixels (need ≥ 50)"
         })
 
-    # Apply filter
+    # Apply Butterworth filter
     b_coef = [0.0674553, 0.134911, 0.0674553]
     a_coef = [-1.14298, 0.412801]
-
     filtered = butter_filtfilt(voltages, b_coef, a_coef)
 
-    # Calculate mean
+    # Calculate mean & std
     voltage_mean = sum(filtered) / len(filtered)
     voltage_std = (sum((x - voltage_mean)**2 for x in filtered) / len(filtered)) ** 0.5
 
-    # ADC conversion (assuming 12-bit ADC, 3.3V reference)
+    # ADC conversion (12-bit, 3.3V)
     adc_mean = (voltage_mean / 3300.0) * 4095
     adc_std = (voltage_std / 3300.0) * 4095
 
-    # ✅ Thickness calculation (adjust formula as needed)
-    # Example: linear mapping from voltage to thickness
-    # You should replace this with your actual calibration formula
-    thickness_mm = voltage_mean * 0.00422
+    # ✅ Gunakan rumus kalibrasi real kamu di sini
+    # Contoh: linear regression hasil eksperimen
+    # thickness_mm = a * voltage_mean + b
+    # Ganti a dan b sesuai hasil kalibrasi real kamu
+    a = 0.00422
+    b = 0.0
+    thickness_mm = a * voltage_mean + b
 
-    # Worn threshold (example: < 1.6mm is worn)
+    # Threshold keausan
     is_worn = thickness_mm < 1.6
 
+    # ✅ Return flat JSON (tanpa "result")
     return json.dumps({
         "success": True,
         "message": f"Processed {len(voltages)} pixels",
-        "result": {
-            "adc_mean": round(adc_mean, 2),
-            "adc_std": round(adc_std, 2),
-            "voltage_mV": round(voltage_mean, 2),
-            "thickness_mm": round(thickness_mm, 2),
-            "is_worn": is_worn,
-            "pixel_count": len(voltages)
-        }
+        "adc_mean": round(adc_mean, 2),
+        "adc_std": round(adc_std, 2),
+        "voltage_mv": round(voltage_mean, 2),
+        "thickness_mm": round(thickness_mm, 2),
+        "is_worn": is_worn,
+        "dataCount": len(voltages)
     })

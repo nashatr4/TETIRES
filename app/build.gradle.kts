@@ -72,6 +72,7 @@ chaquopy {
 }
 
 dependencies {
+    implementation("com.github.mik3y:usb-serial-for-android:3.7.3")
     implementation(libs.androidx.compose.foundation.layout)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.foundation)
@@ -82,7 +83,7 @@ dependencies {
     implementation(libs.androidx.media3.exoplayer)
     debugImplementation(libs.androidx.compose.ui.tooling)
     val navVersion = "2.9.4"
-    val roomVersion = "2.6.1" // atau versi terbaru
+    val roomVersion = "2.6.1"
 
     // Core & Lifecycle
     implementation(libs.androidx.core.ktx)

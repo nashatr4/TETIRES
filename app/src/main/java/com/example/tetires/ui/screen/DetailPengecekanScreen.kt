@@ -32,7 +32,11 @@ fun DetailPengecekanScreen(
     viewModel: MainViewModel,
     idCek: Long
 ) {
-    viewModel.loadCheckDetail(idCek)
+    // 🔹 Load data hanya sekali saat idCek berubah
+    LaunchedEffect(idCek) {
+        viewModel.loadCheckDetail(idCek)
+    }
+
     val detail by viewModel.checkDetail.collectAsState()
     val statusMessage by viewModel.statusMessage.collectAsState()
 
