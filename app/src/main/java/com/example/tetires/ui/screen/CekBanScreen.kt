@@ -88,8 +88,6 @@ fun CekBanScreen(
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-
-
             StateIndicatorCard(
                 state = cekBanState,
                 isConnected = isConnected,
@@ -97,9 +95,6 @@ fun CekBanScreen(
                 deviceInfo = deviceInfo,
                 activeDeviceType = activeDeviceType
             )
-
-
-
 
             Spacer(Modifier.height(16.dp))
 
@@ -202,7 +197,6 @@ fun StateIndicatorCard(
                     fontSize = 12.sp,
                     color = Color.Gray
                 )
-
             }
 
             when (state) {
@@ -233,18 +227,16 @@ fun BusLayoutWithResults(
     ConstraintLayout(
         modifier = Modifier
             .fillMaxWidth()
-            .fillMaxHeight(0.7f)   // ✅ bus besar seperti versi lama
+            .fillMaxHeight(0.7f)
             .padding(vertical = 8.dp)
     ) {
         val (busImage, iconDKI, iconDKA, iconBKI, iconBKA) = createRefs()
 
-        // ✅ Guideline presisi seperti UI lama
         val topGuide = createGuidelineFromTop(0.15f)
         val bottomGuide = createGuidelineFromBottom(0.15f)
         val startGuide = createGuidelineFromStart(0.1f)
         val endGuide = createGuidelineFromEnd(0.1f)
 
-        // ✅ BUS BESAR & PROPOSIONAL (lebih bagus dari versi baru)
         Image(
             painter = painterResource(id = R.drawable.buscekban),
             contentDescription = "Bus",
@@ -310,7 +302,9 @@ fun BusLayoutWithResults(
     }
 }
 
-
+/**
+ * ✅ FIXED: Tampilkan label alur + nilai minimum
+ */
 @Composable
 fun ResultIcon(
     modifier: Modifier,
@@ -324,10 +318,8 @@ fun ResultIcon(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
-
         val (icon, color) = when {
             result != null -> {
-                // Kalau tebal < 1.6, paksa merah
                 if (result.isWorn) Icons.Default.Cancel to Color(0xFFEF4444)
                 else Icons.Default.CheckCircle to Color(0xFF10B981)
             }
@@ -349,14 +341,27 @@ fun ResultIcon(
             )
         }
 
-        // Angka tebal lebih dekat ke ikon
+        // ✅ Tampilkan label alur + nilai minimum
         result?.let {
-            Text(
-                "${"%.1f".format(it.minGroove)} mm",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                color = color
-            )
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(0.dp)
+            ) {
+                // Label alur yang terkecil (contoh: "Alur 2")
+                Text(
+                    it.minGrooveLabel,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Normal,
+                    color = Color.Gray
+                )
+                // Nilai minimum (contoh: "1.5 mm")
+                Text(
+                    it.minGrooveFormatted,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = color
+                )
+            }
         }
     }
 }
@@ -375,11 +380,8 @@ fun ActionButtons(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-
         when (state) {
-
             CekBanState.IDLE -> {
-                // User belum pilih posisi
                 Text(
                     "👆 Pilih posisi ban untuk mulai scan",
                     fontSize = 14.sp,
@@ -389,7 +391,6 @@ fun ActionButtons(
             }
 
             CekBanState.WAITING_SCAN -> {
-                // User sudah pilih posisi, siap scan
                 Button(
                     onClick = onStartScan,
                     modifier = Modifier.size(250.dp, 56.dp),
@@ -400,7 +401,6 @@ fun ActionButtons(
             }
 
             CekBanState.SCANNING -> {
-                // Sedang scan
                 Button(
                     onClick = onStop,
                     modifier = Modifier.size(250.dp, 56.dp),
@@ -409,15 +409,10 @@ fun ActionButtons(
                 ) {
                     Text("Stop & Proses", color = Color.White, fontWeight = FontWeight.Bold)
                 }
-
                 Text("Atau tunggu auto-stop", fontSize = 12.sp, color = Color.Gray)
             }
 
             CekBanState.RESULT_READY -> {
-                // ✅ Hasil scan ready, user bisa:
-                // 1. Pilih posisi lain untuk scan lagi
-                // 2. Atau langsung simpan semua
-
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         "Hasil tersimpan sementara",
@@ -445,7 +440,6 @@ fun ActionButtons(
             }
 
             CekBanState.SAVED -> {
-                // ✅ Data sudah di database
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(
                         Icons.Default.CheckCircle,
@@ -483,7 +477,6 @@ fun ActionButtons(
             }
 
             CekBanState.ERROR -> {
-                // ✅ Error occurred
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(
                         Icons.Default.Cancel,

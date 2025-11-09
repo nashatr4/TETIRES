@@ -32,13 +32,11 @@ fun DetailPengecekanScreen(
     viewModel: MainViewModel,
     idCek: Long
 ) {
-    // 🔹 Load data hanya sekali saat idCek berubah
     LaunchedEffect(idCek) {
         viewModel.loadCheckDetail(idCek)
     }
 
     val detail by viewModel.checkDetail.collectAsState()
-    val statusMessage by viewModel.statusMessage.collectAsState()
 
     Scaffold(
         topBar = {
@@ -58,21 +56,80 @@ fun DetailPengecekanScreen(
                     .fillMaxSize()
                     .padding(paddingValues)
                     .padding(horizontal = 20.dp, vertical = 16.dp),
-                verticalArrangement = Arrangement.SpaceBetween
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Column {
-                    DetailPengecekanContent(detail = d)
-                    Spacer(modifier = Modifier.height(24.dp))
+                // Info Bus Card
+                BusInfoCard(detail = d)
+
+                // Layout Ban 2x2 dengan 4 alur per ban
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    BanDetailCard("Depan Kiri", d.statusDki, d.alurDki, Modifier.weight(1f))
+                    Spacer(modifier = Modifier.width(10.dp))
+                    BanDetailCard("Depan Kanan", d.statusDka, d.alurDka, Modifier.weight(1f))
+                }
+
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    BanDetailCard("Belakang Kiri", d.statusBki, d.alurBki, Modifier.weight(1f))
+                    Spacer(modifier = Modifier.width(10.dp))
+                    BanDetailCard("Belakang Kanan", d.statusBka, d.alurBka, Modifier.weight(1f))
                 }
             }
         } ?: Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            Text("Memuat data...")
+            CircularProgressIndicator()
         }
     }
 }
+
+@Composable
+fun BusInfoCard(detail: CheckDetail) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFEBF2FF)),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                detail.namaBus,
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 20.sp,
+                color = Color(0xFF1E3A8A)
+            )
+            Text(
+                detail.platNomor,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                color = Color(0xFF3949A3)
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+            HorizontalDivider(color = Color(0xFFB0BEC5))
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text("Tanggal", color = Color.Gray, fontSize = 12.sp)
+                    Text(detail.tanggalReadable, fontWeight = FontWeight.Medium, fontSize = 13.sp)
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text("Waktu", color = Color.Gray, fontSize = 12.sp)
+                    Text(detail.waktuReadable, fontWeight = FontWeight.Medium, fontSize = 13.sp)
+                }
+            }
+        }
+    }
+}
+
 
 @Composable
 fun DetailPengecekanContent(detail: CheckDetail) {
@@ -159,48 +216,70 @@ fun BanDetailCard(
     ) {
         Column(
             modifier = Modifier
-                .padding(16.dp)
+                .padding(12.dp)
                 .fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // 🔹 Teks posisi di tengah atas
+            // Header - Posisi Ban
             Text(
                 posisi,
                 fontWeight = FontWeight.Bold,
-                fontSize = 13.sp,
+                fontSize = 14.sp,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth() // Biar benar-benar center
+                modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(5.dp))
+            Spacer(modifier = Modifier.height(6.dp))
             HorizontalDivider(thickness = 1.dp, color = Color(0xFF19A7CE))
             Spacer(modifier = Modifier.height(8.dp))
 
-            AlurRow(label = "Alur 1", value = alur?.alur1)
-            AlurRow(label = "Alur 2", value = alur?.alur2)
-            AlurRow(label = "Alur 3", value = alur?.alur3)
-            AlurRow(label = "Alur 4", value = alur?.alur4)
+            // Display 4 Alur
+            if (alur != null) {
+                val alurDisplayList = alur.getFormattedAlurList()
 
-            // 🔹 Bagian isi rata kanan–kiri seperti semula
-//            Row(
-//                modifier = Modifier.fillMaxWidth(),
-//                horizontalArrangement = Arrangement.SpaceBetween
-//            ) {
-//                Text("Tebal Tapak", color = Color.Gray, fontSize = 12.sp)
-//                Text(
-//                    "${String.format("%.1f", tebalTapak)} mm",
-//                    fontWeight = FontWeight.Medium,
-//                    fontSize = 12.sp
-//                )
-//            }
+                alurDisplayList.forEach { alurDisplay ->
+                    AlurRow(
+                        label = alurDisplay.label,
+                        value = alurDisplay.value,
+                        isWorn = alurDisplay.isWorn,
+                        isMissing = alurDisplay.isMissing
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Info Min
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Min", color = Color.Gray, fontSize = 10.sp)
+                    Text(
+                        alur.formattedMinAlur,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if ((alur.minAlur ?: 0f) < 1.6f) Color(0xFFEF4444) else Color(0xFF059669)
+                    )
+                }
+            } else {
+                // Belum ada data
+                Text(
+                    "Belum Diukur",
+                    color = Color.Gray,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(vertical = 16.dp)
+                )
+            }
 
             Spacer(modifier = Modifier.height(8.dp))
 
+            // Status Badge
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Status", color = Color.Gray, fontSize = 12.sp)
+                Text("Status", color = Color.Gray, fontSize = 11.sp)
                 StatusBadge(status)
             }
         }
@@ -208,29 +287,43 @@ fun BanDetailCard(
 }
 
 @Composable
-private fun AlurRow(label: String, value: Float?) {
-    // Tampilkan "N/A" jika data null
-    val textValue = value?.let { String.format("%.1f mm", it) } ?: "N/A"
+private fun AlurRow(
+    label: String,
+    value: Float?,
+    isWorn: Boolean,
+    isMissing: Boolean
+) {
+    val textValue = value?.let { "%.1f mm".format(it) } ?: "N/A"
 
-    // Beri warna merah jika < 1.6mm
     val color = when {
-        value == null -> Color.Gray
-        value < 1.6f -> Color(0xFFEF4444) // Merah
-        else -> Color.Black
+        isMissing -> Color.Gray
+        isWorn -> Color(0xFFEF4444) // Merah jika < 1.6mm
+        else -> Color(0xFF059669) // Hijau jika >= 1.6mm
+    }
+
+    val bgColor = when {
+        isMissing -> Color.Transparent
+        isWorn -> Color(0xFFEF4444).copy(alpha = 0.1f) // Background merah muda
+        else -> Color.Transparent
     }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 2.dp),
+            .background(bgColor, RoundedCornerShape(4.dp))
+            .padding(horizontal = 4.dp, vertical = 2.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(label, color = Color.Gray, fontSize = 12.sp)
+        Text(
+            label,
+            color = Color.Gray,
+            fontSize = 11.sp
+        )
         Text(
             textValue,
-            fontWeight = FontWeight.Medium,
-            fontSize = 12.sp,
-            color = color // Warna dinamis
+            fontWeight = if (isWorn) FontWeight.Bold else FontWeight.Medium,
+            fontSize = 11.sp,
+            color = color
         )
     }
 }
@@ -240,17 +333,24 @@ fun StatusBadge(statusAus: Boolean?) {
     val (text, color) = when (statusAus) {
         true -> "Aus" to Color(0xFFEF4444)
         false -> "Tidak Aus" to Color(0xFF10B981)
-        else -> "Tidak Diketahui" to Color.Gray
+        else -> "Belum Dicek" to Color.Gray
     }
+
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(50))
             .background(color.copy(alpha = 0.2f))
-            .padding(horizontal = 8.dp, vertical = 1.dp)
+            .padding(horizontal = 8.dp, vertical = 2.dp)
     ) {
-        Text(text, color = color, fontSize = 8.sp, fontWeight = FontWeight.Medium)
+        Text(
+            text,
+            color = color,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Medium
+        )
     }
 }
+
 
 // ---------------- PREVIEW ----------------
 data class DummyCheckDetail(
