@@ -1,5 +1,6 @@
 package com.example.tetires.ui.viewmodel
 
+import LogItem
 import android.app.Application
 import android.content.Context
 import android.util.Log
@@ -9,7 +10,6 @@ import com.example.tetires.data.local.entity.Bus
 import com.example.tetires.data.local.entity.PengecekanWithBus
 import com.example.tetires.data.model.*
 import com.example.tetires.data.repository.TetiresRepository
-import com.example.tetires.util.DateUtils
 import com.example.tetires.util.DownloadHelper
 import com.example.tetires.util.TireStatusHelper
 import kotlinx.coroutines.Dispatchers
@@ -17,8 +17,6 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.text.SimpleDateFormat
-import java.util.*
 
 data class Event<out T>(private val content: T) {
     private var hasBeenHandled = false
@@ -56,14 +54,14 @@ class MainViewModel(
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
     private val _statusMessage = MutableStateFlow<String?>(null)
-    val statusMessage: StateFlow<String?> = _statusMessage
+    val statusMessage: StateFlow<String?> = _statusMessage.asStateFlow()
 
     fun showStatusMessage(message: String) {
         _statusMessage.value = message
     }
 
     fun clearStatusMessage() {
-        _statusMessage.value = ""
+        _statusMessage.value = null
     }
 
     private val _startCheckEvent = MutableLiveData<Event<Long>>()
@@ -161,12 +159,13 @@ class MainViewModel(
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                _startCheckEvent.value =
-                    Event(repository.startOrGetOpenCheck(busId).idPengecekan)
+                val id = repository.startOrGetOpenCheck(busId).idPengecekan
+                _startCheckEvent.value = Event(id)
             } catch (e: Exception) {
                 _errorMessage.value = "Gagal memulai pengecekan: ${e.message}"
+            } finally {
+                _isLoading.value = false
             }
-            _isLoading.value = false
         }
     }
 
@@ -191,10 +190,10 @@ class MainViewModel(
             } catch (e: Exception) {
                 _errorMessage.value = "Gagal update pengecekan: ${e.message}"
                 _statusMessage.value = null
+            } finally {
+                _isLoading.value = false
             }
-            _isLoading.value = false
         }
-        _isLoading.value = false
     }
 
     fun searchLogs(query: String? = null, startDate: Long? = null, endDate: Long? = null) {
@@ -225,8 +224,9 @@ class MainViewModel(
                 _checkDetail.value = repository.getCheckDetail(idCek)
             } catch (e: Exception) {
                 _errorMessage.value = "Gagal memuat detail: ${e.message}"
+            } finally {
+                _isLoading.value = false
             }
-            _isLoading.value = false
         }
     }
 
