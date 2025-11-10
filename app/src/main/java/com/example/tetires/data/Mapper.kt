@@ -2,31 +2,26 @@ package com.example.tetires.data
 
 import com.example.tetires.data.local.entity.PengecekanWithBus
 import com.example.tetires.data.model.PengecekanRingkas
-import java.text.SimpleDateFormat
-import java.util.*
+import com.example.tetires.util.DateUtils
 
 fun PengecekanWithBus.toPengecekanRingkas(): PengecekanRingkas {
-    val dateFormat = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale("id", "ID"))
-    val readableDate = dateFormat.format(Date(tanggalMs))
-    val dka = statusDka == true
-    val dki = statusDki == true
-    val bka = statusBka == true
-    val bki = statusBki == true
+    val summaryStatus = when {
+        listOf(statusDka, statusDki, statusBka, statusBki).any { it == null } -> "Belum Selesai"
+        listOf(statusDka, statusDki, statusBka, statusBki).any { it == true } -> "Aus"
+        else -> "Tidak Aus"
+    }
+
     return PengecekanRingkas(
         idCek = idPengecekan,
         tanggalCek = tanggalMs,
-        tanggalReadable = readableDate,
-        waktuReadable = readableDate,
+        tanggalReadable = DateUtils.formatDate(tanggalMs),
+        waktuReadable = DateUtils.formatTime(tanggalMs),
         namaBus = namaBus,
         platNomor = platNomor,
-        statusDka = dka,
-        statusDki = dki,
-        statusBka = bka,
-        statusBki = bki,
-        summaryStatus = when {
-            listOf(statusDka, statusDki, statusBka, statusBki).any { it == null } -> "Belum Selesai"
-            listOf(statusDka, statusDki, statusBka, statusBki).any { it == true } -> "Aus"
-            else -> "Tidak Aus"
-        }
+        statusDka = statusDka,
+        statusDki = statusDki,
+        statusBka = statusBka,
+        statusBki = statusBki,
+        summaryStatus = summaryStatus
     )
 }

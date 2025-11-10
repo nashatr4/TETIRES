@@ -13,4 +13,3 @@ data class PengecekanRingkas(
     val statusBki: Boolean?,
     val summaryStatus: String
 )
-

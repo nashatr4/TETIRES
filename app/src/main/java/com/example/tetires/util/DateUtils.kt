@@ -5,52 +5,78 @@ import java.util.*
 
 object DateUtils {
 
-    private const val DEFAULT_PATTERN = "dd MMMM yyyy"
-    private val localeID: Locale = Locale.Builder().setLanguage("id").setRegion("ID").build()
-    private val timeZoneJakarta = TimeZone.getTimeZone("Asia/Jakarta")
-    /**
-     * Convert epoch millis ke string tanggal (format: dd MMMM yyyy, ex: 29 April 2025)
-     */
-    fun formatDate(epochMillis: Long, pattern: String = DEFAULT_PATTERN): String {
-        val sdf = SimpleDateFormat(pattern, localeID)
-        sdf.timeZone = timeZoneJakarta
-        return sdf.format(Date(epochMillis))
+    // ✅ Timezone WIB (Jakarta)
+    private val wibTimeZone = TimeZone.getTimeZone("Asia/Jakarta")
+
+    private val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale("id", "ID")).apply {
+        timeZone = wibTimeZone
     }
 
-    fun formatTime(epochMillis: Long): String {
-        val sdf = SimpleDateFormat("HH:mm", localeID)
-        sdf.timeZone = timeZoneJakarta
-        return sdf.format(Date(epochMillis))
+    private val timeFormat = SimpleDateFormat("HH:mm", Locale("id", "ID")).apply {
+        timeZone = wibTimeZone
+    }
+
+    private val dateTimeFormat = SimpleDateFormat("dd MMM yyyy HH:mm", Locale("id", "ID")).apply {
+        timeZone = wibTimeZone
     }
 
     /**
-     * Ambil epoch millis untuk jam 00:00:00 dari tanggal tertentu
+     * Format timestamp ke tanggal saja (WIB)
+     * Contoh: "22 Okt 2025"
      */
-    fun getStartOfDay(date: Date = Date()): Long {
-        val calendar = Calendar.getInstance(timeZoneJakarta)
-        calendar.time = date
-        calendar.set(Calendar.HOUR_OF_DAY, 0)
-        calendar.set(Calendar.MINUTE, 0)
-        calendar.set(Calendar.SECOND, 0)
-        calendar.set(Calendar.MILLISECOND, 0)
-        return calendar.timeInMillis
+    fun formatDate(timestampMs: Long): String {
+        return try {
+            dateFormat.format(Date(timestampMs))
+        } catch (e: Exception) {
+            "Invalid Date"
+        }
     }
 
     /**
-     * Ambil epoch millis untuk jam 23:59:59 dari tanggal tertentu
+     * Format timestamp ke waktu saja (WIB)
+     * Contoh: "10:30"
      */
-    fun getEndOfDay(date: Date = Date()): Long {
-        val calendar = Calendar.getInstance(timeZoneJakarta)
-        calendar.time = date
-        calendar.set(Calendar.HOUR_OF_DAY, 23)
-        calendar.set(Calendar.MINUTE, 59)
-        calendar.set(Calendar.SECOND, 59)
-        calendar.set(Calendar.MILLISECOND, 999)
-        return calendar.timeInMillis
+    fun formatTime(timestampMs: Long): String {
+        return try {
+            timeFormat.format(Date(timestampMs))
+        } catch (e: Exception) {
+            "Invalid Time"
+        }
     }
 
     /**
-     * Ambil epoch millis waktu sekarang (hari ini)
+     * Format timestamp ke tanggal dan waktu (WIB)
+     * Contoh: "22 Okt 2025 10:30"
      */
-    fun today(): Long = System.currentTimeMillis()
+    fun formatDateTime(timestampMs: Long): String {
+        return try {
+            dateTimeFormat.format(Date(timestampMs))
+        } catch (e: Exception) {
+            "Invalid DateTime"
+        }
+    }
+
+    /**
+     * Get timestamp sekarang (dalam WIB)
+     */
+    fun getCurrentTimestamp(): Long = System.currentTimeMillis()
+
+    /**
+     * Convert tanggal string ke timestamp (WIB)
+     */
+    fun parseDate(dateString: String): Long? {
+        return try {
+            dateFormat.parse(dateString)?.time
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    /**
+     * Get waktu sekarang dalam format readable (WIB)
+     * Contoh: "22 Okt 2025 14:30"
+     */
+    fun getCurrentDateTimeReadable(): String {
+        return formatDateTime(getCurrentTimestamp())
+    }
 }

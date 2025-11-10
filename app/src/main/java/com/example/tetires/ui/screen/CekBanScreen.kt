@@ -24,7 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.constraintlayout.compose.ConstraintLayout
+import androidx.constraintlayout.compose.ConstraintLayout  // ← SATU-SATUNYA import ConstraintLayout
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.tetires.R
@@ -228,18 +228,16 @@ fun BusLayoutWithResults(
     ConstraintLayout(
         modifier = Modifier
             .fillMaxWidth()
-            .fillMaxHeight(0.7f)   // ✅ bus besar seperti versi lama
+            .fillMaxHeight(0.7f)
             .padding(vertical = 8.dp)
     ) {
         val (busImage, iconDKI, iconDKA, iconBKI, iconBKA) = createRefs()
 
-        // ✅ Guideline presisi seperti UI lama
         val topGuide = createGuidelineFromTop(0.15f)
         val bottomGuide = createGuidelineFromBottom(0.15f)
         val startGuide = createGuidelineFromStart(0.1f)
         val endGuide = createGuidelineFromEnd(0.1f)
 
-        // ✅ BUS BESAR & PROPOSIONAL (lebih bagus dari versi baru)
         Image(
             painter = painterResource(id = R.drawable.buscekban),
             contentDescription = "Bus",
@@ -319,10 +317,8 @@ fun ResultIcon(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
-
         val (icon, color) = when {
             result != null -> {
-                // Kalau tebal < 1.6, paksa merah
                 if (result.isWorn) Icons.Default.Cancel to Color(0xFFEF4444)
                 else Icons.Default.CheckCircle to Color(0xFF10B981)
             }
@@ -370,11 +366,8 @@ fun ActionButtons(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-
         when (state) {
-
             CekBanState.IDLE -> {
-                // User belum pilih posisi
                 Text(
                     "👆 Pilih posisi ban untuk mulai scan",
                     fontSize = 14.sp,
@@ -384,7 +377,6 @@ fun ActionButtons(
             }
 
             CekBanState.WAITING_SCAN -> {
-                // User sudah pilih posisi, siap scan
                 Button(
                     onClick = onStartScan,
                     modifier = Modifier.size(250.dp, 56.dp),
@@ -395,7 +387,6 @@ fun ActionButtons(
             }
 
             CekBanState.SCANNING -> {
-                // Sedang scan
                 Button(
                     onClick = onStop,
                     modifier = Modifier.size(250.dp, 56.dp),

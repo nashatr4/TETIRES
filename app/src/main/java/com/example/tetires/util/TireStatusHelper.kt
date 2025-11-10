@@ -5,9 +5,10 @@ import com.example.tetires.model.StatusPengecekan
 /**
  * Helper object untuk menentukan status ban berdasarkan ukuran tapak.
  *
- * Aturan:
- * - ukuran > 1.6 mm = TIDAK AUS
- * - ukuran <= 1.6 mm = AUS
+ * ✅ ATURAN BISNIS (UPDATED):
+ * - Ambil nilai MINIMUM dari 4 alur
+ * - Jika min < 1.6 mm → AUS
+ * - Jika min ≥ 1.6 mm → TIDAK AUS
  */
 object TireStatusHelper {
 
@@ -15,30 +16,35 @@ object TireStatusHelper {
     private const val MIN_UKURAN = 0f
     private const val MAX_UKURAN = 20f
 
-    // Return true jika ada minimal 1 alur <= 1.6 mm
+    /**
+     * ✅ NEW: Tentukan status aus berdasarkan nilai MINIMUM dari 4 alur
+     * Return true jika nilai minimum < 1.6 mm
+     */
     fun isAusFromAlur(alurValues: FloatArray): Boolean {
         require(alurValues.size == 4) { "alurValues harus berisi 4 nilai" }
-        // Aus jika ada minimal 1 alur <= 1.6mm
-        return alurValues.any { it <= THRESHOLD_MM }
+
+        // Ambil nilai minimum
+        val minAlur = alurValues.minOrNull() ?: 0f
+
+        // Aus jika minimum < 1.6mm (BUKAN <=)
+        return minAlur < THRESHOLD_MM
     }
 
-    // Tentukan status aus berdasarkan list alur (dengan null handling)
+    /**
+     * ✅ NEW: Tentukan status aus dengan null handling
+     * Ambil nilai minimum yang valid, lalu cek < 1.6mm
+     */
     fun isAusFromAlurList(alur1: Float?, alur2: Float?, alur3: Float?, alur4: Float?): Boolean? {
         val alurList = listOfNotNull(alur1, alur2, alur3, alur4)
 
         // Jika tidak ada data sama sekali
         if (alurList.isEmpty()) return null
 
-        // Aus jika ada minimal 1 alur ≤ 1.6mm
-        return alurList.any { it <= THRESHOLD_MM }
-    }
+        // Ambil nilai minimum
+        val minAlur = alurList.minOrNull() ?: return null
 
-    @Deprecated(
-        message = "Gunakan isAusFromAlur() untuk logika baru (4 alur)",
-        replaceWith = ReplaceWith("isAusFromAlurList(ukuranMm, ukuranMm, ukuranMm, ukuranMm)")
-    )
-    fun isAus(ukuranMm: Float?): Boolean? {
-        return ukuranMm?.let { it <= THRESHOLD_MM }
+        // Aus jika minimum < 1.6mm
+        return minAlur < THRESHOLD_MM
     }
 
     // Validasi untuk 1 nilai alur
@@ -64,7 +70,9 @@ object TireStatusHelper {
         return "$values mm"
     }
 
-    // Nilai minimum dari 4 alur
+    /**
+     * ✅ Nilai minimum dari 4 alur (untuk menentukan status)
+     */
     fun getMinAlur(alur1: Float?, alur2: Float?, alur3: Float?, alur4: Float?): Float? {
         val values = listOfNotNull(alur1, alur2, alur3, alur4)
         return values.minOrNull()
@@ -79,20 +87,9 @@ object TireStatusHelper {
         }
     }
 
-    // Gunakan isAusFromAlurList()
-    @Deprecated(
-        message = "Gunakan isAusFromAlurList() untuk logika baru",
-        replaceWith = ReplaceWith("getStatusFromAlurList(alur1, alur2, alur3, alur4)")
-    )
-    fun getStatusFromUkuran(ukuranMm: Float?): StatusPengecekan {
-        return when {
-            ukuranMm == null -> StatusPengecekan.BelumDicek
-            ukuranMm <= THRESHOLD_MM -> StatusPengecekan.Aus
-            else -> StatusPengecekan.TidakAus
-        }
-    }
-
-    // Tentukan status berdasarkan 4 alur
+    /**
+     * ✅ Tentukan status berdasarkan 4 alur
+     */
     fun getStatusFromAlurList(alur1: Float?, alur2: Float?, alur3: Float?, alur4: Float?): StatusPengecekan {
         val isAus = isAusFromAlurList(alur1, alur2, alur3, alur4)
         return when (isAus) {
@@ -134,19 +131,23 @@ object TireStatusHelper {
         }
     }
 
-    // Detail kondisi ban berdasarkan 4 alur
+    /**
+     * ✅ NEW: Detail kondisi ban berdasarkan nilai minimum
+     */
     fun getDetailStatus(alur1: Float?, alur2: Float?, alur3: Float?, alur4: Float?): String {
         val values = listOfNotNull(alur1, alur2, alur3, alur4)
 
         if (values.isEmpty()) return "Belum diukur"
 
-        val ausCount = values.count { it <= THRESHOLD_MM }
         val minValue = values.minOrNull() ?: 0f
+        val maxValue = values.maxOrNull() ?: 0f
 
-        return when {
-            ausCount == 0 -> "Semua alur aman (>1.6mm)"
-            ausCount == values.size -> "Semua alur aus (≤1.6mm)"
-            else -> "$ausCount dari ${values.size} alur aus (min: ${formatUkuran(minValue)})"
+        val isAus = minValue < THRESHOLD_MM
+
+        return buildString {
+            append("Min: ${formatUkuran(minValue)} | Max: ${formatUkuran(maxValue)} → ")
+            if (isAus) append("AUS ❌")
+            else append("AMAN ✅")
         }
     }
 
@@ -166,6 +167,19 @@ object TireStatusHelper {
             true -> "Aus"
             false -> "Tidak Aus"
             else -> "Belum Dicek"
+        }
+    }
+
+    /**
+     * ✅ NEW: Get teks status dengan detail threshold
+     */
+    fun getStatusTextWithDetail(minAlur: Float?): String {
+        if (minAlur == null) return "Belum Dicek"
+
+        return if (minAlur < THRESHOLD_MM) {
+            "Aus (${formatUkuran(minAlur)} < 1.6mm)"
+        } else {
+            "Tidak Aus (${formatUkuran(minAlur)} ≥ 1.6mm)"
         }
     }
 }

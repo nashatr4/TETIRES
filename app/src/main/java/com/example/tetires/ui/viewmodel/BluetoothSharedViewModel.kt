@@ -27,9 +27,6 @@ enum class AppMode {
     TERMINAL, CEK_BAN
 }
 
-/**
- * Shared ViewModel untuk Terminal & CekBan
- */
 class BluetoothSharedViewModel(application: Application) : AndroidViewModel(application) {
 
     private val TAG = "BluetoothSharedVM"
@@ -100,8 +97,8 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
                 scanBuffer.add(rawData)
                 _dataCount.value = scanBuffer.size
 
-                if (scanBuffer.size == 1110) {
-                    Log.d(TAG, "Buffer penuh (1110), proses otomatis.")
+                if (scanBuffer.size >= 1110) {
+                    Log.d(TAG, "Buffer penuh (${scanBuffer.size}), proses otomatis.")
                     processCurrentScan()
                 }
             }
@@ -229,7 +226,7 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
     }
 
     /**
-     * Proses data yang sudah terkumpul (memanggil Python dan menyimpan hasil sementara)
+     * ✅ FIXED: Proses data dengan parsing JSON yang benar
      */
     fun processCurrentScan() {
         if (scanBuffer.isEmpty()) {
@@ -260,9 +257,10 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
                 addToTerminal("Python response received")
                 addToTerminal(resultJson.take(300) + if (resultJson.length > 300) "..." else "")
 
-                // Parse JSON secara defensif
+                // ✅ Parse JSON dengan benar
                 val json = JSONObject(resultJson)
-                val success = json.optBoolean("success", true) // some older module mungkin nggak punya flag
+                val success = json.optBoolean("success", false)
+
                 if (!success) {
                     val message = json.optString("message", "Processing failed")
                     withContext(Dispatchers.Main) {
@@ -272,23 +270,22 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
                     return@launch
                 }
 
-                // Ambil object result (fallback jika struktur berbeda)
-                val data = if (json.has("result")) json.getJSONObject("result") else json
+                // ✅ Ambil object "result" (nested)
+                val data = json.getJSONObject("result")
 
-                // Ambil nilai alur jika ada, gunakan 0f kalau nggak ada
-                val alur1 = data.optDouble("alur1", Double.NaN).toFloat().takeIf { it.isFinite() } ?: 0f
-                val alur2 = data.optDouble("alur2", Double.NaN).toFloat().takeIf { it.isFinite() } ?: 0f
-                val alur3 = data.optDouble("alur3", Double.NaN).toFloat().takeIf { it.isFinite() } ?: 0f
-                val alur4 = data.optDouble("alur4", Double.NaN).toFloat().takeIf { it.isFinite() } ?: 0f
+                // ✅ Parse 4 alur dengan default 0f jika tidak ada
+                val alur1 = data.optDouble("alur1", 0.0).toFloat()
+                val alur2 = data.optDouble("alur2", 0.0).toFloat()
+                val alur3 = data.optDouble("alur3", 0.0).toFloat()
+                val alur4 = data.optDouble("alur4", 0.0).toFloat()
 
-                val thicknessMm = data.optDouble("thickness_mm", Double.NaN).toFloat().takeIf { it.isFinite() } ?: 0f
-                val adcMean = data.optDouble("adc_mean", Double.NaN).toFloat().takeIf { it.isFinite() } ?: 0f
-                val adcStd = data.optDouble("adc_std", Double.NaN).toFloat().takeIf { it.isFinite() } ?: 0f
-                val voltageMv = data.optDouble("voltage_mV", Double.NaN).toFloat().takeIf { it.isFinite() } ?: 0f
+                val adcMean = data.optDouble("adc_mean", 0.0).toFloat()
+                val adcStd = data.optDouble("adc_std", 0.0).toFloat()
+                val voltageMv = data.optDouble("voltage_mV", 0.0).toFloat()
                 val isWorn = data.optBoolean("is_worn", false)
                 val pixelCount = data.optInt("pixel_count", totalData)
 
-                // Susun result
+                // ✅ Susun result
                 val result = TireScanResult(
                     posisi = currentPosisi!!,
                     adcMean = adcMean,
@@ -311,17 +308,14 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
                     addToTerminal(
                         """
                         === HASIL ${currentPosisi?.label} ===
-                        Mean ADC: ${result.adcMean}
-                        STD ADC: ${result.adcStd}
-                        Tegangan: ${result.voltageMv} mV
-                        Ketebalan: ${thicknessMm} mm
-                        Alur: ${result.groovesFormatted}
-                        Status: ${if (result.isWorn) "AUS" else "OK"}
+                        4 Alur: ${result.groovesFormatted}
+                        Min: ${result.minGrooveLabel} = ${"%.1f".format(result.minGroove)} mm
+                        Status: ${if (result.isWorn) "AUS ❌" else "AMAN ✅"}
                         ===========================
                         """.trimIndent()
                     )
                     _cekBanState.value = CekBanState.RESULT_READY
-                    _statusMessage.value = "${currentPosisi!!.label}: Min ${result.minGroove} mm - ${if (result.isWorn) "AUS" else "OK"}"
+                    _statusMessage.value = "${currentPosisi!!.label}: ${result.minGrooveLabel} = ${"%.1f".format(result.minGroove)}mm → ${if (result.isWorn) "AUS ❌" else "AMAN ✅"}"
                 }
 
             } catch (e: Exception) {
@@ -347,7 +341,7 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
     }
 
     /**
-     * Simpan semua hasil ke database (DetailBan + PengukuranAlur)
+     * ✅ FIXED: Simpan dengan 4 alur
      */
     fun saveAllResults() {
         val results = _scanResults.value
@@ -367,7 +361,7 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
 
                 // Simpan per posisi
                 for ((posisi, result) in results) {
-                    val statusBan: Boolean? = result.isWorn
+                    val statusBan: Boolean = result.isWorn
 
                     // Cek existing DetailBan
                     var detailBan = detailBanDao.getDetailByPosisi(currentPengecekanId!!, posisi.name)
@@ -380,7 +374,7 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
                         val detailId = detailBanDao.insertDetailBan(detailBan)
                         addToTerminal("Saved DetailBan for ${posisi.name} (ID: $detailId)")
 
-                        // Simpan pengukuran alur
+                        // ✅ Simpan 4 alur
                         val pengukuran = PengukuranAlur(
                             detailBanId = detailId,
                             alur1 = result.alur1,
@@ -389,14 +383,14 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
                             alur4 = result.alur4
                         )
                         pengukuranAlurDao.insertPengukuran(pengukuran)
-                        addToTerminal("Saved PengukuranAlur for ${posisi.name}")
+                        addToTerminal("Saved PengukuranAlur: ${result.groovesFormatted}")
                     } else {
                         // Update existing detail
                         val updatedDetail = detailBan.copy(status = statusBan)
                         detailBanDao.updateDetailBan(updatedDetail)
                         addToTerminal("Updated DetailBan for ${posisi.name}")
 
-                        // Update atau insert pengukuran
+                        // ✅ Update 4 alur
                         val existingPeng = pengukuranAlurDao.getPengukuranByDetailBanId(detailBan.idDetail)
                         if (existingPeng == null) {
                             val pengukuran = PengukuranAlur(
@@ -414,9 +408,9 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
                                 alur3 = result.alur3,
                                 alur4 = result.alur4
                             )
-                            pengukuranAlurDao.insertPengukuran(updatedPeng)
+                            pengukuranAlurDao.updatePengukuran(updatedPeng)
                         }
-                        addToTerminal("Saved/Updated PengukuranAlur for ${posisi.name}")
+                        addToTerminal("Updated PengukuranAlur: ${result.groovesFormatted}")
                     }
 
                     statusMap[posisi] = statusBan
@@ -482,6 +476,9 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
     }
 }
 
+/**
+ * ✅ Data class untuk hasil scan per ban
+ */
 data class TireScanResult(
     val posisi: PosisiBan,
     val adcMean: Float,
@@ -494,11 +491,35 @@ data class TireScanResult(
     val alur3: Float,
     val alur4: Float,
 ) {
+    // ✅ Nilai minimum dari 4 alur (untuk menentukan status)
     val minGroove: Float
         get() = listOf(alur1, alur2, alur3, alur4).minOrNull() ?: 0f
 
+    // ✅ Nama alur yang paling kecil (Alur 1, Alur 2, dst)
+    val minGrooveLabel: String
+        get() {
+            val alurMap = listOf(
+                "Alur 1" to alur1,
+                "Alur 2" to alur2,
+                "Alur 3" to alur3,
+                "Alur 4" to alur4
+            )
+            val minEntry = alurMap.minByOrNull { it.second }
+            return minEntry?.first ?: "?"
+        }
+
+    // ✅ Format untuk display di terminal (semua 4 alur)
     val groovesFormatted: String
         get() = "${"%.1f".format(alur1)} | ${"%.1f".format(alur2)} | ${"%.1f".format(alur3)} | ${"%.1f".format(alur4)}"
 
+    // ✅ Format singkat untuk display di ikon (hanya yang terkecil)
+    val minGrooveFormatted: String
+        get() = "${"%.1f".format(minGroove)} mm"
+
+    // ✅ Convert ke array untuk save ke repository
     fun toAlurArray(): FloatArray = floatArrayOf(alur1, alur2, alur3, alur4)
+
+    // ✅ Get status text untuk display
+    val statusText: String
+        get() = if (isWorn) "AUS (< 1.6mm)" else "AMAN (≥ 1.6mm)"
 }
