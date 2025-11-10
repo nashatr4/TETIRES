@@ -271,7 +271,7 @@ fun BusListItemDatabase(
 
     val status = if (ausCount > 0) BusStatus.AUS else BusStatus.AMAN
     val statusText = if (ausCount > 0) "$ausCount ban aus" else "tidak ada ban aus"
-    val tanggal = latestCheck?.tanggalReadable ?: "Belum pernah diperiksa"
+    val tanggal = latestCheck?.tanggalReadable ?: ": -"
 
     Card(
         modifier = modifier.fillMaxWidth(),

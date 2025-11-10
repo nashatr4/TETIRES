@@ -105,7 +105,7 @@ fun DetailPengecekanContent(detail: CheckDetail) {
                     textAlign = TextAlign.Center
                 )
                 Spacer(modifier = Modifier.height(6.dp))
-                Divider(color = Color(0xFFB0BEC5), thickness = 1.dp)
+                HorizontalDivider(color = Color(0xFFB0BEC5), thickness = 1.dp)
                 Spacer(modifier = Modifier.height(6.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),

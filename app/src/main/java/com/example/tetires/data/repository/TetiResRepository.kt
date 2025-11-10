@@ -11,9 +11,13 @@ import com.example.tetires.data.local.entity.PengukuranAlur
 import com.example.tetires.data.model.*
 import com.example.tetires.util.DateUtils
 import com.example.tetires.util.TireStatusHelper
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
+import android.util.Log
 
+private const val TAG = "TetiresRepository"
 class TetiresRepository(
     private val busDao: BusDao,
     private val pengecekanDao: PengecekanDao,
@@ -83,77 +87,115 @@ class TetiresRepository(
         idPengecekan: Long,
         posisi: PosisiBan,
         alurValues: FloatArray
-    ): UpdateResult {
-        require(alurValues.size == 4) { "alurValues harus berisi 4 nilai" }
+    ): UpdateResult = withContext(Dispatchers.IO) {
+        try {
+            require(alurValues.size == 4) { "Must provide exactly 4 groove values" }
 
-        val check = pengecekanDao.getPengecekanById(idPengecekan)
-            ?: throw IllegalArgumentException("Pengecekan tidak ditemukan")
+            // Hitung status aus berdasarkan nilai minimum
+            val isAus = TireStatusHelper.isAusFromAlur(alurValues)
 
-        val detail = detailBanDao.getDetailByPosisi(idPengecekan, posisi.name)
-            ?: throw IllegalArgumentException("Detail ban $posisi tidak ditemukan")
+            // Cari/buat DetailBan
+            val detailBan = detailBanDao.getDetailByPosisi(idPengecekan, posisi.name)
+            val detailId = if (detailBan == null) {
+                val newDetail = DetailBan(
+                    pengecekanId = idPengecekan,
+                    posisiBan = posisi.name,
+                    status = isAus
+                )
+                detailBanDao.insertDetailBan(newDetail)
+            } else {
+                detailBanDao.updateDetailBan(detailBan.copy(status = isAus))
+                detailBan.idDetail
+            }
 
-        val isAus = alurValues.any { it < 1.6f }
-
-        val updatedDetail = detail.copy(status = isAus)
-        detailBanDao.updateDetailBan(updatedDetail)
-
-        val existingPengukuran = pengukuranAlurDao.getPengukuranByDetailBanId(detail.idDetail)
-        val pengukuran = (existingPengukuran ?: PengukuranAlur(detailBanId = detail.idDetail))
-            .copy(
-                alur1 = alurValues[0],
-                alur2 = alurValues[1],
-                alur3 = alurValues[2],
-                alur4 = alurValues[3]
-            )
-        pengukuranAlurDao.insertPengukuran(pengukuran)
-
-        val updatedCheck = when (posisi) {
-            PosisiBan.DKA -> check.copy(statusDka = isAus)
-            PosisiBan.DKI -> check.copy(statusDki = isAus)
-            PosisiBan.BKA -> check.copy(statusBka = isAus)
-            PosisiBan.BKI -> check.copy(statusBki = isAus)
-        }
-        pengecekanDao.updatePengecekan(updatedCheck)
-
-        // ✅ Cek apakah semua ban sudah diisi
-        val iscomplete = listOf(
-            updatedCheck.statusDka,
-            updatedCheck.statusDki,
-            updatedCheck.statusBka,
-            updatedCheck.statusBki,
-        ).all { it != null }
-
-        // ✅ Buat status message
-        val statusMessage = if (isAus) "Ban aus (kurang dari 1.6mm) ❌" else "Ban aman (>1.6mm) ✅"
-
-        return UpdateResult(
-            complete = iscomplete,
-            idCek = idPengecekan,
-            statusMessage = statusMessage
-        )
-    }
-
-    fun getLast10Checks(busId: Long): Flow<List<PengecekanRingkas>> {
-        return pengecekanDao.getLast10Checks(busId).map { checksWithBus ->
-            checksWithBus.map { item ->
-                PengecekanRingkas(
-                    idCek = item.idPengecekan,
-                    tanggalCek = item.tanggalMs,
-                    tanggalReadable = DateUtils.formatDate(item.tanggalMs),
-                    waktuReadable = DateUtils.formatTime(item.waktuMs),
-                    namaBus = item.namaBus,
-                    platNomor = item.platNomor,
-                    statusDka = item.statusDka,
-                    statusDki = item.statusDki,
-                    statusBka = item.statusBka,
-                    statusBki = item.statusBki,
-                    summaryStatus = computeSummaryStatus(
-                        item.statusDka, item.statusDki,
-                        item.statusBka, item.statusBki
+            // Simpan/update 4 alur
+            val existingPengukuran = pengukuranAlurDao.getPengukuranByDetailBanId(detailId)
+            if (existingPengukuran == null) {
+                pengukuranAlurDao.insertPengukuran(
+                    PengukuranAlur(
+                        detailBanId = detailId,
+                        alur1 = alurValues[0],
+                        alur2 = alurValues[1],
+                        alur3 = alurValues[2],
+                        alur4 = alurValues[3]
+                    )
+                )
+            } else {
+                pengukuranAlurDao.updatePengukuran(
+                    existingPengukuran.copy(
+                        alur1 = alurValues[0],
+                        alur2 = alurValues[1],
+                        alur3 = alurValues[2],
+                        alur4 = alurValues[3]
                     )
                 )
             }
+
+
+            // Update summary di Pengecekan
+            val pengecekan = pengecekanDao.getPengecekanById(idPengecekan)
+            if (pengecekan != null) {
+                val updated = when (posisi) {
+                    PosisiBan.DKA -> pengecekan.copy(statusDka = isAus)
+                    PosisiBan.DKI -> pengecekan.copy(statusDki = isAus)
+                    PosisiBan.BKA -> pengecekan.copy(statusBka = isAus)
+                    PosisiBan.BKI -> pengecekan.copy(statusBki = isAus)
+                }
+                pengecekanDao.updatePengecekan(updated)
+
+                // Cek apakah semua ban sudah dicek
+                val allChecked = listOf(
+                    updated.statusDka,
+                    updated.statusDki,
+                    updated.statusBka,
+                    updated.statusBki
+                ).all { it != null }
+
+                val minAlur = alurValues.minOrNull() ?: 0f
+                val statusText = if (isAus) "AUS (< 1.6mm)" else "AMAN (≥ 1.6mm)"
+
+                UpdateResult(
+                    complete = allChecked,
+                    statusMessage = "${posisi.label}: Min ${String.format("%.1f", minAlur)}mm → $statusText"
+                )
+            } else {
+                UpdateResult(false, "Pengecekan tidak ditemukan")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "updateCheckPartial failed", e)
+            UpdateResult(false, "Error: ${e.message}")
         }
+    }
+
+    fun getLast10Checks(busId: Long): Flow<List<PengecekanRingkas>> {
+        return pengecekanDao.getLast10Checks(busId)
+            .map { checksWithBusList ->
+                checksWithBusList.filter { check ->
+                    listOf(check.statusDka, check.statusDki, check.statusBka, check.statusBki)
+                        .any { it != null }
+                }
+            }
+            .map { filteredList ->
+                filteredList.map { item ->
+                    PengecekanRingkas(
+                        idCek = item.idPengecekan,
+                        tanggalCek = item.tanggalMs,
+                        tanggalReadable = DateUtils.formatDate(item.tanggalMs),
+                        waktuReadable = DateUtils.formatTime(item.waktuMs),
+                        namaBus = item.namaBus,
+                        platNomor = item.platNomor,
+                        statusDka = item.statusDka,
+                        statusDki = item.statusDki,
+                        statusBka = item.statusBka,
+                        statusBki = item.statusBki,
+                        summaryStatus = computeSummaryStatus(
+                            item.statusDka, item.statusDki,
+                            item.statusBka, item.statusBki
+                        )
+                    )
+                }
+            }
+
     }
 
     suspend fun getCheckDetail(idCek: Long): CheckDetail? {
@@ -194,7 +236,7 @@ class TetiresRepository(
             statusBka = detailMap["BKA"]?.status ?: false,
             statusBki = detailMap["BKI"]?.status ?: false,
 
-            // Rata-rata kedalaman (dari 4 alur)
+            // 4 alur per ban
             alurDka = createAlurBan(pengukuranMap["DKA"]),
             alurDki = createAlurBan(pengukuranMap["DKI"]),
             alurBka = createAlurBan(pengukuranMap["BKA"]),
@@ -270,7 +312,7 @@ class TetiresRepository(
         }
     }
 
-    // ✅ FIX: Gunakan < 1.6f (bukan <=)
+    // Gunakan logika < 1.6f untuk menentukan aus
     suspend fun completeCheck(idCek: Long) {
         val detailList = detailBanDao.getDetailsByCheckId(idCek)
         for (detail in detailList) {
@@ -285,7 +327,9 @@ class TetiresRepository(
                         pengukuran.alur4
                     )
                     if (alurList.isNotEmpty()) {
-                        val isAus = alurList.any { it < 1.6f }
+                        // Ambil nilai minimum, lalu cek < 1.6f
+                        val minAlur = alurList.minOrNull() ?: 0f
+                        val isAus = minAlur < 1.6f
                         detailBanDao.updateDetailBan(detail.copy(status = isAus))
                     }
                 }
@@ -303,17 +347,17 @@ class TetiresRepository(
     ): String {
         val list = listOf(dka, dki, bka, bki)
 
-        // ⏳ Jika ada yang null → belum selesai
+        // Jika ada yang null → belum selesai
         if (list.any { it == null }) {
             return "Belum Selesai"
         }
 
-        // ❌ Jika ada minimal 1 ban aus (true) → AUS
+        // Jika ada minimal 1 ban aus (true) → AUS
         if (list.any { it == true }) {
             return "Aus"
         }
 
-        // ✅ Jika SEMUA ban tidak aus (semua false) → TIDAK AUS
+        // Jika SEMUA ban tidak aus (semua false) → TIDAK AUS
         return "Tidak Aus"
     }
 }

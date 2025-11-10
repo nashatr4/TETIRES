@@ -88,8 +88,6 @@ fun CekBanScreen(
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-
-
             StateIndicatorCard(
                 state = cekBanState,
                 isConnected = isConnected,
@@ -97,9 +95,6 @@ fun CekBanScreen(
                 deviceInfo = deviceInfo,
                 activeDeviceType = activeDeviceType
             )
-
-
-
 
             Spacer(Modifier.height(16.dp))
 
@@ -352,7 +347,7 @@ fun ResultIcon(
         // Angka tebal lebih dekat ke ikon
         result?.let {
             Text(
-                "${"%.1f".format(it.minGroove)} mm",
+                "${"%.2f".format(it.minGroove)} mm",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 color = color
