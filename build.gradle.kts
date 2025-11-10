@@ -3,5 +3,6 @@ plugins {
     alias(libs.plugins.android.application) apply false
     alias(libs.plugins.kotlin.android) apply false
     alias(libs.plugins.kotlin.compose) apply false
+    alias(libs.plugins.ksp) apply false  // ← TAMBAHKAN INI
     id("com.chaquo.python") version "16.1.0" apply false
 }
