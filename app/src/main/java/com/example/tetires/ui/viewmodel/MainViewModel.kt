@@ -1,6 +1,5 @@
 package com.example.tetires.ui.viewmodel
 
-import LogItem
 import android.app.Application
 import android.content.Context
 import android.util.Log
