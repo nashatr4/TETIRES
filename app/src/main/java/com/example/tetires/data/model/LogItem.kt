@@ -1,3 +1,5 @@
+package com.example.tetires.data.model
+
 data class LogItem(
     val idCek: Long,
     val tanggalCek: Long,
