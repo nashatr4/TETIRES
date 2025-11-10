@@ -23,7 +23,7 @@ import com.example.tetires.data.local.entity.PengukuranAlur
         DetailBan::class,
         PengukuranAlur::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {

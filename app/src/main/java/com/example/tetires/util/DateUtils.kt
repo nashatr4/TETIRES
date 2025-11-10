@@ -8,15 +8,17 @@ object DateUtils {
     // ✅ Timezone WIB (Jakarta)
     private val wibTimeZone = TimeZone.getTimeZone("Asia/Jakarta")
 
-    private val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale("id", "ID")).apply {
+    private val localeID = Locale.forLanguageTag("id-ID")
+
+    private val dateFormat = SimpleDateFormat("dd MMM yyyy", localeID).apply {
         timeZone = wibTimeZone
     }
 
-    private val timeFormat = SimpleDateFormat("HH:mm", Locale("id", "ID")).apply {
+    private val timeFormat = SimpleDateFormat("HH:mm", localeID).apply {
         timeZone = wibTimeZone
     }
 
-    private val dateTimeFormat = SimpleDateFormat("dd MMM yyyy HH:mm", Locale("id", "ID")).apply {
+    private val dateTimeFormat = SimpleDateFormat("dd MMM yyyy HH:mm", localeID).apply {
         timeZone = wibTimeZone
     }
 

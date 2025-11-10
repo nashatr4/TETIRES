@@ -231,10 +231,10 @@ class TetiresRepository(
             platNomor = bus.platNomor,
 
             // Status ban
-            statusDka = detailMap["DKA"]?.status ?: false,
-            statusDki = detailMap["DKI"]?.status ?: false,
-            statusBka = detailMap["BKA"]?.status ?: false,
-            statusBki = detailMap["BKI"]?.status ?: false,
+            statusDka = detailMap["DKA"]?.status,
+            statusDki = detailMap["DKI"]?.status,
+            statusBki = detailMap["BKA"]?.status,
+            statusBka = detailMap["BKI"]?.status,
 
             // 4 alur per ban
             alurDka = createAlurBan(pengukuranMap["DKA"]),

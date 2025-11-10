@@ -22,7 +22,7 @@ import androidx.room.PrimaryKey
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index(value = ["pengecekanId"], unique = true)]
+    indices = [Index(value = ["pengecekanId"])]
 )
 data class DetailBan(
     @PrimaryKey(autoGenerate = true)

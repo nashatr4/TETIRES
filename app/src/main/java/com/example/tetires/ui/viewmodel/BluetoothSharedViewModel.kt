@@ -38,6 +38,10 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
     private val detailBanDao = database.detailBanDao()
     private val pengukuranAlurDao = database.pengukuranAlurDao()
 
+    private val repository = com.example.tetires.data.repository.TetiresRepository(
+        busDao, pengecekanDao, detailBanDao, pengukuranAlurDao
+    )
+
     // Device manager (Bluetooth/USB/Serial)
     private val deviceManager = DeviceConnectionManager(application)
 
@@ -81,12 +85,6 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
 
     init {
         setupDeviceManagerCallbacks()
-
-        // auto-detect device singkat setelah init
-        viewModelScope.launch {
-            kotlinx.coroutines.delay(500)
-            deviceManager.autoDetectDevices()
-        }
     }
 
     private fun setupDeviceManagerCallbacks() {
@@ -166,7 +164,6 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
     fun enterCekBanMode(busId: Long, pengecekanId: Long) {
         _appMode.value = AppMode.CEK_BAN
         currentBusId = busId
-        currentPengecekanId = pengecekanId
         _cekBanState.value = CekBanState.IDLE
         _scanResults.value = emptyMap()
 
@@ -174,12 +171,47 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
         addToTerminal("Bus ID: $busId")
         addToTerminal("Pengecekan ID: $pengecekanId")
 
-        if (!_isConnected.value) {
-            _statusMessage.value = "Menghubungkan device..."
-            viewModelScope.launch { deviceManager.autoDetectDevices() }
-        } else {
-            _statusMessage.value = "Pilih posisi ban untuk scan"
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val idPengecekanAktif: Long
+
+                if (pengecekanId == 0L) {
+                    // 1. Selesaikan urusan database DULU
+                    val pengecekanBaru = repository.startOrGetOpenCheck(busId)
+                    idPengecekanAktif = pengecekanBaru.idPengecekan
+                    addToTerminal("Pengecekan baru dibuat. ID Aktif: $idPengecekanAktif")
+                } else {
+                    addToTerminal("Mengedit Pengecekan ID: $pengecekanId")
+                    idPengecekanAktif = pengecekanId
+                }
+                currentPengecekanId = idPengecekanAktif
+
+                // 2. SETELAH database selesai, BARU urus koneksi
+                if (!_isConnected.value) {
+                    withContext(Dispatchers.Main) {
+                        _statusMessage.value = "Menghubungkan device..."
+                    }
+                    deviceManager.autoDetectDevices() // <-- INI SATU-SATUNYA PERINTAH KONEKSI
+                } else {
+                    withContext(Dispatchers.Main) {
+                        _statusMessage.value = "Pilih posisi ban untuk scan"
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Gagal startOrGetOpenCheck: ${e.message}", e)
+                withContext(Dispatchers.Main) {
+                    _statusMessage.value = "Error: Gagal memulai pengecekan"
+                    _cekBanState.value = CekBanState.ERROR
+                }
+            }
         }
+
+//        if (!_isConnected.value) {
+//            _statusMessage.value = "Menghubungkan device..."
+//            viewModelScope.launch { deviceManager.autoDetectDevices() }
+//        } else {
+//            _statusMessage.value = "Pilih posisi ban untuk scan"
+//        }
     }
 
     fun selectPositionToScan(posisi: PosisiBan) {
