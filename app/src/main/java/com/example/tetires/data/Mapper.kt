@@ -14,8 +14,8 @@ fun PengecekanWithBus.toPengecekanRingkas(): PengecekanRingkas {
     return PengecekanRingkas(
         idCek = idPengecekan,
         tanggalCek = tanggalMs,
-        tanggalReadable = DateUtils.formatDateOnly(tanggalMs),
-        waktuReadable = DateUtils.formatTimeOnly(tanggalMs),
+        tanggalReadable = DateUtils.formatDate(tanggalMs),
+        waktuReadable = DateUtils.formatTime(tanggalMs),
         namaBus = namaBus,
         platNomor = platNomor,
         statusDka = statusDka,

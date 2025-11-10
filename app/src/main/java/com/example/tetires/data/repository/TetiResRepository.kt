@@ -15,6 +15,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import android.util.Log
 
 class TetiresRepository(
     private val busDao: BusDao,
@@ -22,6 +23,9 @@ class TetiresRepository(
     private val detailBanDao: DetailBanDao,
     private val pengukuranAlurDao: PengukuranAlurDao
 ) {
+    companion object {
+        private const val TAG = "TetiresRepository"
+    }
 
     // ========== BUS ==========
     fun getAllBuses(): Flow<List<Bus>> = busDao.getAllBus()
