@@ -319,13 +319,20 @@ fun ResultIcon(
     ) {
         val (icon, color) = when {
             result != null -> {
-                if (result.isWorn) Icons.Default.Cancel to Color(0xFFEF4444)
-                else Icons.Default.CheckCircle to Color(0xFF10B981)
+                if (result.minGroove < 1.6f) {
+                    // ❌ Worn tire → red cross
+                    Icons.Default.Cancel to Color(0xFFEF4444)
+                } else {
+                    // ✅ Safe tire → green check
+                    Icons.Default.CheckCircle to Color(0xFF10B981)
+                }
             }
-            state == CekBanState.SCANNING || state == CekBanState.PROCESSING ->
+            state == CekBanState.SCANNING || state == CekBanState.PROCESSING -> {
                 Icons.Default.AddCircle to Color.Gray
-            else ->
+            }
+            else -> {
                 Icons.Default.AddCircle to Color.LightGray
+            }
         }
 
         IconButton(
@@ -340,17 +347,18 @@ fun ResultIcon(
             )
         }
 
-        // Angka tebal lebih dekat ke ikon
+        // Show groove depth text with same color logic
         result?.let {
             Text(
-                "${"%.2f".format(it.minGroove)} mm",
+                text = "${"%.2f".format(it.minGroove)} mm",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
-                color = color
+                color = if (it.minGroove < 1.6f) Color(0xFFEF4444) else Color(0xFF10B981)
             )
         }
     }
 }
+
 
 @Composable
 fun ActionButtons(
