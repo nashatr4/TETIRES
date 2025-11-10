@@ -143,7 +143,7 @@ fun RiwayatScreen(
             HeaderDeskripsiBus(
                 busData = busData,
                 onCekBanClick = {
-                    busId?.let { viewModel.startCheck(it) }
+                    busId?.let { navController.navigate("cekBan/$it/0") }
                 }
             )
             Spacer(modifier = Modifier.height(15.dp))
@@ -151,12 +151,12 @@ fun RiwayatScreen(
         }
     }
 
-    val startCheckEvent by viewModel.startCheckEvent.observeAsState()
-    LaunchedEffect(startCheckEvent) {
-        startCheckEvent?.getContentIfNotHandled()?.let { checkId ->
-            navController.navigate("cekBan/${busId}/${checkId}")
-        }
-    }
+//    val startCheckEvent by viewModel.startCheckEvent.observeAsState()
+//    LaunchedEffect(startCheckEvent) {
+//        startCheckEvent?.getContentIfNotHandled()?.let { checkId ->
+//            navController.navigate("cekBan/${busId}/${checkId}")
+//        }
+//    }
 }
 
 // ========================== HEADER ==========================
@@ -256,16 +256,16 @@ fun RiwayatListItem(
             )
 
             Box(modifier = Modifier.weight(0.6f), contentAlignment = Alignment.Center) {
-                StatusDot(isAus = item.statusDki == true)
+                StatusDot(isAus = item.statusDki)
             }
             Box(modifier = Modifier.weight(0.6f), contentAlignment = Alignment.Center) {
-                StatusDot(isAus = item.statusDka == true)
+                StatusDot(isAus = item.statusDka)
             }
             Box(modifier = Modifier.weight(0.6f), contentAlignment = Alignment.Center) {
-                StatusDot(isAus = item.statusBki == true)
+                StatusDot(isAus = item.statusBki)
             }
             Box(modifier = Modifier.weight(0.6f), contentAlignment = Alignment.Center) {
-                StatusDot(isAus = item.statusBka == true)
+                StatusDot(isAus = item.statusBka)
             }
 
             Box (modifier = Modifier.weight(0.8f), contentAlignment = Alignment.Center) {
@@ -412,15 +412,19 @@ fun RiwayatSection(
 
 // ========================== DOT ==========================
 @Composable
-fun StatusDot(isAus: Boolean) {
-    val color = if (isAus) Color(0xFFEF4444) else Color(0xFF10B981)
+fun StatusDot(isAus: Boolean?) {
+    val color = when (isAus) {
+        true -> Color(0xFFEF4444)  // Merah (Aus)
+        false -> Color(0xFF10B981) // Hijau (Tidak Aus)
+        null -> Color.LightGray    // Abu-abu (Belum Dicek)
+    }
     Box(
-        modifier = Modifier
-            .padding(horizontal = 4.dp)
-            .size(20.dp)
-            .clip(CircleShape)
-            .background(color)
-            .border(width = 1.dp, color = Color.Black, shape = CircleShape)
+    modifier = Modifier
+        .padding(horizontal = 4.dp)
+        .size(20.dp)
+        .clip(CircleShape)
+        .background(color)
+        .border(width = 1.dp, color = Color.Black, shape = CircleShape)
     )
 }
 

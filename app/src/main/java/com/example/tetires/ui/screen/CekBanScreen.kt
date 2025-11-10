@@ -197,6 +197,7 @@ fun StateIndicatorCard(
                     fontSize = 12.sp,
                     color = Color.Gray
                 )
+
             }
 
             when (state) {
@@ -302,9 +303,7 @@ fun BusLayoutWithResults(
     }
 }
 
-/**
- * ✅ FIXED: Tampilkan label alur + nilai minimum
- */
+
 @Composable
 fun ResultIcon(
     modifier: Modifier,
@@ -341,27 +340,14 @@ fun ResultIcon(
             )
         }
 
-        // ✅ Tampilkan label alur + nilai minimum
+        // Angka tebal lebih dekat ke ikon
         result?.let {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(0.dp)
-            ) {
-                // Label alur yang terkecil (contoh: "Alur 2")
-                Text(
-                    it.minGrooveLabel,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Normal,
-                    color = Color.Gray
-                )
-                // Nilai minimum (contoh: "1.5 mm")
-                Text(
-                    it.minGrooveFormatted,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = color
-                )
-            }
+            Text(
+                "${"%.2f".format(it.minGroove)} mm",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = color
+            )
         }
     }
 }
@@ -409,10 +395,15 @@ fun ActionButtons(
                 ) {
                     Text("Stop & Proses", color = Color.White, fontWeight = FontWeight.Bold)
                 }
+
                 Text("Atau tunggu auto-stop", fontSize = 12.sp, color = Color.Gray)
             }
 
             CekBanState.RESULT_READY -> {
+                // ✅ Hasil scan ready, user bisa:
+                // 1. Pilih posisi lain untuk scan lagi
+                // 2. Atau langsung simpan semua
+
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         "Hasil tersimpan sementara",
@@ -440,6 +431,7 @@ fun ActionButtons(
             }
 
             CekBanState.SAVED -> {
+                // ✅ Data sudah di database
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(
                         Icons.Default.CheckCircle,
@@ -477,6 +469,7 @@ fun ActionButtons(
             }
 
             CekBanState.ERROR -> {
+                // ✅ Error occurred
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(
                         Icons.Default.Cancel,

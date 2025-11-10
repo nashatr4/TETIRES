@@ -17,15 +17,13 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import android.util.Log
 
+private const val TAG = "TetiresRepository"
 class TetiresRepository(
     private val busDao: BusDao,
     private val pengecekanDao: PengecekanDao,
     private val detailBanDao: DetailBanDao,
     private val pengukuranAlurDao: PengukuranAlurDao
 ) {
-    companion object {
-        private const val TAG = "TetiresRepository"
-    }
 
     // ========== BUS ==========
     fun getAllBuses(): Flow<List<Bus>> = busDao.getAllBus()
@@ -97,7 +95,7 @@ class TetiresRepository(
             val isAus = TireStatusHelper.isAusFromAlur(alurValues)
 
             // Cari/buat DetailBan
-            var detailBan = detailBanDao.getDetailByPosisi(idPengecekan, posisi.name)
+            val detailBan = detailBanDao.getDetailByPosisi(idPengecekan, posisi.name)
             val detailId = if (detailBan == null) {
                 val newDetail = DetailBan(
                     pengecekanId = idPengecekan,
@@ -132,6 +130,7 @@ class TetiresRepository(
                     )
                 )
             }
+
 
             // Update summary di Pengecekan
             val pengecekan = pengecekanDao.getPengecekanById(idPengecekan)
@@ -169,26 +168,34 @@ class TetiresRepository(
     }
 
     fun getLast10Checks(busId: Long): Flow<List<PengecekanRingkas>> {
-        return pengecekanDao.getLast10Checks(busId).map { checksWithBus ->
-            checksWithBus.map { item ->
-                PengecekanRingkas(
-                    idCek = item.idPengecekan,
-                    tanggalCek = item.tanggalMs,
-                    tanggalReadable = DateUtils.formatDate(item.tanggalMs),
-                    waktuReadable = DateUtils.formatTime(item.waktuMs),
-                    namaBus = item.namaBus,
-                    platNomor = item.platNomor,
-                    statusDka = item.statusDka,
-                    statusDki = item.statusDki,
-                    statusBka = item.statusBka,
-                    statusBki = item.statusBki,
-                    summaryStatus = computeSummaryStatus(
-                        item.statusDka, item.statusDki,
-                        item.statusBka, item.statusBki
-                    )
-                )
+        return pengecekanDao.getLast10Checks(busId)
+            .map { checksWithBusList ->
+                checksWithBusList.filter { check ->
+                    listOf(check.statusDka, check.statusDki, check.statusBka, check.statusBki)
+                        .any { it != null }
+                }
             }
-        }
+            .map { filteredList ->
+                filteredList.map { item ->
+                    PengecekanRingkas(
+                        idCek = item.idPengecekan,
+                        tanggalCek = item.tanggalMs,
+                        tanggalReadable = DateUtils.formatDate(item.tanggalMs),
+                        waktuReadable = DateUtils.formatTime(item.waktuMs),
+                        namaBus = item.namaBus,
+                        platNomor = item.platNomor,
+                        statusDka = item.statusDka,
+                        statusDki = item.statusDki,
+                        statusBka = item.statusBka,
+                        statusBki = item.statusBki,
+                        summaryStatus = computeSummaryStatus(
+                            item.statusDka, item.statusDki,
+                            item.statusBka, item.statusBki
+                        )
+                    )
+                }
+            }
+
     }
 
     suspend fun getCheckDetail(idCek: Long): CheckDetail? {
@@ -305,7 +312,7 @@ class TetiresRepository(
         }
     }
 
-    // ✅ FIXED: Gunakan logika < 1.6f untuk menentukan aus
+    // Gunakan logika < 1.6f untuk menentukan aus
     suspend fun completeCheck(idCek: Long) {
         val detailList = detailBanDao.getDetailsByCheckId(idCek)
         for (detail in detailList) {
@@ -320,7 +327,7 @@ class TetiresRepository(
                         pengukuran.alur4
                     )
                     if (alurList.isNotEmpty()) {
-                        // ✅ Ambil nilai minimum, lalu cek < 1.6f
+                        // Ambil nilai minimum, lalu cek < 1.6f
                         val minAlur = alurList.minOrNull() ?: 0f
                         val isAus = minAlur < 1.6f
                         detailBanDao.updateDetailBan(detail.copy(status = isAus))
@@ -340,17 +347,17 @@ class TetiresRepository(
     ): String {
         val list = listOf(dka, dki, bka, bki)
 
-        // ⏳ Jika ada yang null → belum selesai
+        // Jika ada yang null → belum selesai
         if (list.any { it == null }) {
             return "Belum Selesai"
         }
 
-        // ❌ Jika ada minimal 1 ban aus (true) → AUS
+        // Jika ada minimal 1 ban aus (true) → AUS
         if (list.any { it == true }) {
             return "Aus"
         }
 
-        // ✅ Jika SEMUA ban tidak aus (semua false) → TIDAK AUS
+        // Jika SEMUA ban tidak aus (semua false) → TIDAK AUS
         return "Tidak Aus"
     }
 }
