@@ -1,8 +1,5 @@
 package com.example.tetires.data.model
 
-import com.example.tetires.util.DateUtils
-import com.example.tetires.util.TireStatusHelper
-
 data class PengecekanRingkas(
     val idCek: Long,
     val tanggalCek: Long,
