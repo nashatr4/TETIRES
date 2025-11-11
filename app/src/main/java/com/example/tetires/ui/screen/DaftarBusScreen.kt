@@ -263,7 +263,7 @@ fun BusListItemDatabase(
     val latestCheck by lastCheckFlow.collectAsState(initial = null)
 
     val (status: BusStatus, statusText: String, tanggal: String) = if (latestCheck == null) {
-        Triple(BusStatus.BELUM_DICEK, "Belum Dicek", "-")
+        Triple(BusStatus.BELUM_DICEK, "Belum dicek", "-")
     } else {
         val ausCount = listOf(
             latestCheck?.statusDka,
@@ -312,7 +312,7 @@ fun StatusBadge(status: BusStatus, text: String) {
     val color = when (status) {
         BusStatus.AUS -> Color(0xFFEF4444)
         BusStatus.AMAN -> Color(0xFF10b981)
-        BusStatus.BELUM_DICEK -> Color.Gray
+        BusStatus.BELUM_DICEK -> Color.LightGray
     }
 
     Box(
