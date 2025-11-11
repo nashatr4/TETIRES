@@ -35,7 +35,7 @@ import com.example.tetires.data.model.PengecekanRingkas
 import com.example.tetires.ui.viewmodel.MainViewModel
 
 // Status bus
-enum class BusStatus { AMAN, AUS }
+enum class BusStatus { AMAN, AUS, BELUM_DICEK }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -262,16 +262,24 @@ fun BusListItemDatabase(
     val lastCheckFlow = viewModel.getLastCheckForBus(bus.idBus)
     val latestCheck by lastCheckFlow.collectAsState(initial = null)
 
-    val ausCount = listOf(
-        latestCheck?.statusDka,
-        latestCheck?.statusDki,
-        latestCheck?.statusBka,
-        latestCheck?.statusBki
-    ).count { it == true }
+    val (status: BusStatus, statusText: String, tanggal: String) = if (latestCheck == null) {
+        Triple(BusStatus.BELUM_DICEK, "Belum Dicek", "-")
+    } else {
+        val ausCount = listOf(
+            latestCheck?.statusDka,
+            latestCheck?.statusDki,
+            latestCheck?.statusBka,
+            latestCheck?.statusBki
+        ).count { it == true }
 
-    val status = if (ausCount > 0) BusStatus.AUS else BusStatus.AMAN
-    val statusText = if (ausCount > 0) "$ausCount ban aus" else "tidak ada ban aus"
-    val tanggal = latestCheck?.tanggalReadable ?: ": -"
+        if (ausCount > 0) {
+            // Ada ban aus
+            Triple(BusStatus.AUS, "$ausCount ban aus", latestCheck?.tanggalReadable ?: "-")
+        } else {
+            // Tidak ada ban aus
+            Triple(BusStatus.AMAN, "Tidak ada ban aus", latestCheck?.tanggalReadable ?: "-")
+        }
+    }
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -301,7 +309,11 @@ fun BusListItemDatabase(
 
 @Composable
 fun StatusBadge(status: BusStatus, text: String) {
-    val color = if (status == BusStatus.AUS) Color(0xFFEF4444) else Color(0xFF10B981)
+    val color = when (status) {
+        BusStatus.AUS -> Color(0xFFEF4444)
+        BusStatus.AMAN -> Color(0xFF10b981)
+        BusStatus.BELUM_DICEK -> Color.Gray
+    }
 
     Box(
         modifier = Modifier
