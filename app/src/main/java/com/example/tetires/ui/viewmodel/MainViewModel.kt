@@ -6,7 +6,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.lifecycle.*
 import com.example.tetires.data.local.entity.Bus
-import com.example.tetires.data.local.entity.PengecekanWithBus
+import com.example.tetires.data.local.entity.PengukuranAlur
 import com.example.tetires.data.model.*
 import com.example.tetires.data.repository.TetiresRepository
 import com.example.tetires.util.DownloadHelper
@@ -240,16 +240,94 @@ class MainViewModel(
      * Download riwayat pengecekan sebagai CSV file dan langsung buka
      * Method 1: Save ke Downloads + Auto Open
      */
-    fun downloadHistory(context: Context, logs: List<PengecekanRingkas>, busName: String? = null) {
-        DownloadHelper.downloadHistoryAsCSV(context, logs, busName)
+    fun downloadHistory(context: Context, busId: Long) {
+        viewModelScope.launch {
+            try {
+                _isLoading.value = true
+
+                // ✅ Ambil data riwayat pengecekan
+                val logs = repository.getLast10Checks(busId).first()
+
+                if (logs.isEmpty()) {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(context, "Tidak ada riwayat untuk diunduh", Toast.LENGTH_SHORT).show()
+                    }
+                    return@launch
+                }
+
+                // ✅ Ambil data pengukuran alur
+                val pengecekanIds = logs.map { it.idCek }
+                val pengukuranMap = repository.getPengukuranMapByPengecekanIdsForExport(pengecekanIds)
+
+                // ✅ Ambil nama bus
+                val bus = repository.getBusById(busId)
+
+                // ✅ Download
+                DownloadHelper.downloadHistoryAsCSV(
+                    context = context,
+                    logs = logs,
+                    pengukuranMap = pengukuranMap,
+                    busName = bus?.namaBus
+                )
+
+            } catch (e: Exception) {
+                Log.e("MainViewModel", "Error downloading history", e)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(
+                        context,
+                        "Gagal download: ${e.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            } finally {
+                _isLoading.value = false
+            }
+        }
     }
 
     /**
      * Alternative Method: Share CSV (Lebih reliable karena tidak perlu storage permission)
      * User bisa pilih: Save ke Drive, Buka dengan Excel, Share via WhatsApp, dll
      */
-    fun downloadAndShareHistory(context: Context, logs: List<PengecekanRingkas>, busName: String? = null) {
-        DownloadHelper.downloadAndShareCSV(context, logs, busName)
+    fun downloadAndShareHistory(context: Context, busId: Long) {
+        viewModelScope.launch {
+            try {
+                _isLoading.value = true
+
+                val logs = repository.getLast10Checks(busId).first()
+
+                if (logs.isEmpty()) {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(context, "Tidak ada riwayat untuk diunduh", Toast.LENGTH_SHORT).show()
+                    }
+                    return@launch
+                }
+
+                val pengecekanIds = logs.map { it.idCek }
+                val pengukuranMap = repository.getPengukuranMapByPengecekanIdsForExport(pengecekanIds)
+
+                val bus = repository.getBusById(busId)
+
+                DownloadHelper.downloadAndShareCSV(
+                    context = context,
+                    logs = logs,
+                    pengukuranMap = pengukuranMap,
+                    busName = bus?.namaBus
+                )
+
+            } catch (e: Exception) {
+                Log.e("MainViewModel", "Error sharing history", e)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(
+                        context,
+                        "Gagal share: ${e.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            } finally {
+                _isLoading.value = false
+            }
+        }
     }
 
     /**
@@ -259,17 +337,130 @@ class MainViewModel(
     fun downloadDetailedHistory(context: Context, busId: Long) {
         viewModelScope.launch {
             try {
+                _isLoading.value = true
+
                 val logs = repository.getLast10Checks(busId).first()
+
+                if (logs.isEmpty()) {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(context, "Tidak ada riwayat untuk diunduh", Toast.LENGTH_SHORT).show()
+                    }
+                    return@launch
+                }
+
+                val pengecekanIds = logs.map { it.idCek }
+                val pengukuranMap = repository.getPengukuranMapByPengecekanIdsForExport(pengecekanIds)
+
                 val bus = repository.getBusById(busId)
-                DownloadHelper.downloadDetailedHistory(context, logs, bus?.namaBus)
+
+                DownloadHelper.downloadDetailedHistory(
+                    context = context,
+                    logs = logs,
+                    pengukuranMap = pengukuranMap,
+                    busName = bus?.namaBus
+                )
+
             } catch (e: Exception) {
+                Log.e("MainViewModel", "Error downloading detailed history", e)
                 withContext(Dispatchers.Main) {
                     Toast.makeText(
                         context,
-                        "Gagal download: ${e.message}",
+                        "Gagal download detail: ${e.message}",
                         Toast.LENGTH_SHORT
                     ).show()
                 }
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    // ===== DOWNLOAD FUNCTIONS (untuk RiwayatScreen) =====
+
+    /**
+     * ✅ Export history dengan data pengukuran lengkap
+     */
+    fun exportHistory(context: Context, logs: List<PengecekanRingkas>, busName: String?) {
+        viewModelScope.launch {
+            try {
+                _isLoading.value = true
+
+                if (logs.isEmpty()) {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(context, "Tidak ada riwayat untuk diunduh", Toast.LENGTH_SHORT).show()
+                    }
+                    return@launch
+                }
+
+                // ✅ Ambil data pengukuran untuk semua pengecekan
+                val pengecekanIds = logs.map { it.idCek }
+                val pengukuranMap = repository.getPengukuranMapByPengecekanIdsForExport(pengecekanIds)
+
+                Log.d("MainViewModel", "Exporting ${logs.size} logs with ${pengukuranMap.size} pengukuran entries")
+
+                // ✅ Download dengan data lengkap
+                DownloadHelper.downloadHistoryAsCSV(
+                    context = context,
+                    logs = logs,
+                    pengukuranMap = pengukuranMap,
+                    busName = busName
+                )
+
+            } catch (e: Exception) {
+                Log.e("MainViewModel", "Error exporting history", e)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(
+                        context,
+                        "Gagal export: ${e.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    /**
+     * ✅ Export dan share history dengan data pengukuran lengkap
+     */
+    fun exportAndShareHistory(context: Context, logs: List<PengecekanRingkas>, busName: String?) {
+        viewModelScope.launch {
+            try {
+                _isLoading.value = true
+
+                if (logs.isEmpty()) {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(context, "Tidak ada riwayat untuk diunduh", Toast.LENGTH_SHORT).show()
+                    }
+                    return@launch
+                }
+
+                // ✅ Ambil data pengukuran untuk semua pengecekan
+                val pengecekanIds = logs.map { it.idCek }
+                val pengukuranMap = repository.getPengukuranMapByPengecekanIdsForExport(pengecekanIds)
+
+                Log.d("MainViewModel", "Sharing ${logs.size} logs with ${pengukuranMap.size} pengukuran entries")
+
+                // ✅ Download + share dengan data lengkap
+                DownloadHelper.downloadAndShareCSV(
+                    context = context,
+                    logs = logs,
+                    pengukuranMap = pengukuranMap,
+                    busName = busName
+                )
+
+            } catch (e: Exception) {
+                Log.e("MainViewModel", "Error sharing history", e)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(
+                        context,
+                        "Gagal share: ${e.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            } finally {
+                _isLoading.value = false
             }
         }
     }

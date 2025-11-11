@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import android.util.Log
+import com.example.tetires.util.DownloadHelper
 
 private const val TAG = "TetiresRepository"
 class TetiresRepository(
@@ -335,6 +336,37 @@ class TetiresRepository(
                 }
             }
         }
+    }
+
+    /**
+     * Helper function untuk mengambil semua pengukuran alur berdasarkan list pengecekan IDs
+     * Returns Map<idPengecekan, List<PengukuranWithPosisi>>
+     */
+    suspend fun getPengukuranMapByPengecekanIdsForExport(
+        pengecekanIds: List<Long>
+    ): Map<Long, List<DownloadHelper.PengukuranWithPosisi>> {
+        if (pengecekanIds.isEmpty()) return emptyMap()
+
+        // Query untuk ambil semua pengukuran dengan posisi ban
+        val pengukuranEntities = pengecekanDao.getPengukuranByPengecekanIds(pengecekanIds)
+
+        // Convert ke Map untuk lookup cepat
+        return pengukuranEntities.groupBy { it.pengecekanId }
+            .mapValues { entry ->
+                entry.value.map { entity ->
+                    DownloadHelper.PengukuranWithPosisi(
+                        posisiBan = entity.posisiBan,
+                        pengukuran = PengukuranAlur(
+                            idPengukuranAlur = entity.idPengukuranAlur,
+                            detailBanId = entity.detailBanId,
+                            alur1 = entity.alur1,
+                            alur2 = entity.alur2,
+                            alur3 = entity.alur3,
+                            alur4 = entity.alur4
+                        )
+                    )
+                }
+            }
     }
 
 

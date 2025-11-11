@@ -8,7 +8,8 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface PengecekanDao {
 
-    @Query("""
+    @Query(
+        """
         SELECT 
             p.idPengecekan,
             p.tanggalMs,
@@ -24,7 +25,8 @@ interface PengecekanDao {
         WHERE p.busId = :busId
         ORDER BY p.tanggalMs DESC
         LIMIT 10
-    """)
+    """
+    )
     fun getLast10Checks(busId: Long): Flow<List<PengecekanWithBus>>
 
     @Query("DELETE FROM pengecekan WHERE idPengecekan = :id")
@@ -48,7 +50,8 @@ interface PengecekanDao {
     @Query("SELECT * FROM pengecekan WHERE busId = :busId ORDER BY tanggalMs DESC LIMIT 1")
     suspend fun getLatestPengecekanForBus(busId: Long): Pengecekan?
 
-    @Query("""
+    @Query(
+        """
         SELECT 
             p.idPengecekan,
             p.tanggalMs,
@@ -63,6 +66,49 @@ interface PengecekanDao {
         INNER JOIN bus b ON p.busId = b.idBus
         ORDER BY p.tanggalMs DESC
         LIMIT 10
-    """)
+    """
+    )
     fun getLast10ChecksAllBus(): Flow<List<PengecekanWithBus>>
+
+    /**
+     * ✅ Query yang sudah diperbaiki untuk export CSV
+     * Pastikan order posisi ban konsisten
+     */
+    @Query(
+        """
+    SELECT 
+        db.pengecekanId,
+        db.posisiBan,
+        pa.idPengukuranAlur,
+        pa.detailBanId,
+        pa.alur1,
+        pa.alur2,
+        pa.alur3,
+        pa.alur4
+    FROM pengukuran_alur pa
+    INNER JOIN detail_ban db ON pa.detailBanId = db.idDetail
+    WHERE db.pengecekanId IN (:pengecekanIds)
+    ORDER BY db.pengecekanId DESC, 
+             CASE db.posisiBan
+                WHEN 'DKI' THEN 1
+                WHEN 'DKA' THEN 2
+                WHEN 'BKI' THEN 3
+                WHEN 'BKA' THEN 4
+                ELSE 5
+             END
+"""
+    )
+    suspend fun getPengukuranByPengecekanIds(pengecekanIds: List<Long>): List<PengukuranWithPosisiEntity>
+
+    // Entity untuk query result
+    data class PengukuranWithPosisiEntity(
+        val pengecekanId: Long,
+        val posisiBan: String,
+        val idPengukuranAlur: Long,
+        val detailBanId: Long,
+        val alur1: Float?,
+        val alur2: Float?,
+        val alur3: Float?,
+        val alur4: Float?
+    )
 }

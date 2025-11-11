@@ -116,7 +116,8 @@ fun CekBanScreen(
                 onRestart = { bluetoothVM.resetCekBanContext() },
                 onComplete = {
                     navController.navigate("detailPengecekan/$pengecekanId") {
-                        popUpTo("cekBan/$pengecekanId") { inclusive = true }
+                        popUpTo("beranda") { inclusive = false }
+                        launchSingleTop = true
                     }
                 }
             )
