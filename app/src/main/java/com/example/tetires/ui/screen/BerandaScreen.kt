@@ -135,7 +135,7 @@ fun TableHeader() {
         Text("Tanggal", Modifier.weight(1.2f), color = Color.White, fontSize = 12.sp, textAlign = TextAlign.Center)
         Text("PO Bus", Modifier.weight(1.2f), color = Color.White, fontSize = 12.sp, textAlign = TextAlign.Center)
         Text("Plat Nomor", Modifier.weight(1.5f), color = Color.White, fontSize = 12.sp, textAlign = TextAlign.Center)
-        Text("Status", Modifier.weight(0.6f), color = Color.White, fontSize = 12.sp, textAlign = TextAlign.Center)
+        Text("Status", Modifier.weight(1f), color = Color.White, fontSize = 12.sp, textAlign = TextAlign.Center)
     }
 }
 
@@ -322,21 +322,21 @@ fun HistoryRow(item: LogItem, navController: NavController) {
             Text(
                 text = item.tanggalReadable,
                 modifier = Modifier.weight(1.2f),
-                fontSize = 13.sp,
+                fontSize = 12.sp,
                 textAlign = TextAlign.Center,
                 color = Color.Black
             )
             Text(
                 text = item.namaBus,
                 modifier = Modifier.weight(1.2f),
-                fontSize = 13.sp,
+                fontSize = 12.sp,
                 textAlign = TextAlign.Center,
                 color = Color.Black
             )
             Text(
                 text = item.platNomor,
                 modifier = Modifier.weight(1.5f),
-                fontSize = 13.sp,
+                fontSize = 12.sp,
                 textAlign = TextAlign.Center,
                 fontWeight = FontWeight.SemiBold,
                 color = Color.Black
@@ -346,7 +346,7 @@ fun HistoryRow(item: LogItem, navController: NavController) {
             Text(
                 text = item.summaryStatus,
                 modifier = Modifier.weight(1f),
-                fontSize = 13.sp,
+                fontSize = 12.sp,
                 textAlign = TextAlign.Center,
                 color = when (item.summaryStatus) {
                     "Aus" -> ColorRed           // Merah untuk aus
