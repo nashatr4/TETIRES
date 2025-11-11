@@ -220,14 +220,26 @@ class MainViewModel(
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                _checkDetail.value = repository.getCheckDetail(idCek)
+                Log.d("DetailPengecekan", "Loading detail for id=$idCek")
+                val detail = repository.getCheckDetail(idCek)
+
+                if (detail != null) {
+                    _checkDetail.value = detail
+                    Log.d("DetailPengecekan", "Detail loaded successfully: $detail")
+                } else {
+                    _errorMessage.value = "Data detail tidak ditemukan."
+                    Log.e("DetailPengecekan", "No detail found for id=$idCek")
+                }
+
             } catch (e: Exception) {
-                _errorMessage.value = "Gagal memuat detail: ${e.message}"
+                _errorMessage.value = "Gagal memuat detail: ${e.localizedMessage}"
+                Log.e("DetailPengecekan", "Error loading detail", e)
             } finally {
                 _isLoading.value = false
             }
         }
     }
+
 
     fun clearError() {
         _errorMessage.value = null

@@ -231,19 +231,20 @@ class TetiresRepository(
             namaBus = bus.namaBus,
             platNomor = bus.platNomor,
 
-            // Status ban
+            // ✅ Corrected status mapping
             statusDka = detailMap["DKA"]?.status,
             statusDki = detailMap["DKI"]?.status,
-            statusBki = detailMap["BKA"]?.status,
-            statusBka = detailMap["BKI"]?.status,
+            statusBka = detailMap["BKA"]?.status,
+            statusBki = detailMap["BKI"]?.status,
 
-            // 4 alur per ban
+            // ✅ Corrected alur mapping
             alurDka = createAlurBan(pengukuranMap["DKA"]),
             alurDki = createAlurBan(pengukuranMap["DKI"]),
             alurBka = createAlurBan(pengukuranMap["BKA"]),
             alurBki = createAlurBan(pengukuranMap["BKI"]),
         )
     }
+
 
     suspend fun deletePengecekanById(id: Long): Result<Unit> {
         return try {
