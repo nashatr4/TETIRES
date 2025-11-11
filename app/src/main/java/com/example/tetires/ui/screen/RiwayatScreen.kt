@@ -82,11 +82,12 @@ fun RiwayatScreen(
                     FloatingActionButton(
                         onClick = {
                             // ✅ METHOD 1: Langsung save & open (lebih simple)
-                            viewModel.downloadHistory(
+                            viewModel.exportHistory(
                                 context = context,
                                 logs = items,
                                 busName = busData?.namaBus
                             )
+
 
                             // ✅ METHOD 2: Show menu untuk pilih (uncomment jika mau pakai)
                             // showDownloadMenu = true
@@ -111,7 +112,7 @@ fun RiwayatScreen(
                             text = { Text("Simpan & Buka") },
                             onClick = {
                                 showDownloadMenu = false
-                                viewModel.downloadHistory(
+                                viewModel.exportHistory(
                                     context = context,
                                     logs = items,
                                     busName = busData?.namaBus
@@ -122,7 +123,7 @@ fun RiwayatScreen(
                             text = { Text("Bagikan / Export") },
                             onClick = {
                                 showDownloadMenu = false
-                                viewModel.downloadAndShareHistory(
+                                viewModel.exportAndShareHistory(
                                     context = context,
                                     logs = items,
                                     busName = busData?.namaBus
