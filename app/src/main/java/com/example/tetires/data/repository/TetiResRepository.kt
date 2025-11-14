@@ -19,6 +19,7 @@ import android.util.Log
 import com.example.tetires.util.DownloadHelper
 
 private const val TAG = "TetiresRepository"
+
 class TetiresRepository(
     private val busDao: BusDao,
     private val pengecekanDao: PengecekanDao,
@@ -132,7 +133,6 @@ class TetiresRepository(
                 )
             }
 
-
             // Update summary di Pengecekan
             val pengecekan = pengecekanDao.getPengecekanById(idPengecekan)
             if (pengecekan != null) {
@@ -196,55 +196,110 @@ class TetiresRepository(
                     )
                 }
             }
-
     }
 
-    suspend fun getCheckDetail(idCek: Long): CheckDetail? {
-        val check = pengecekanDao.getPengecekanById(idCek) ?: return null
-        val bus = busDao.getBusById(check.busId) ?: return null
+    /**
+     * ✅ FIXED: getCheckDetail dengan logging detail dan error handling lebih baik
+     */
+    suspend fun getCheckDetail(idCek: Long): CheckDetail? = withContext(Dispatchers.IO) {
+        try {
+            Log.d(TAG, "========== START getCheckDetail for idCek=$idCek ==========")
 
-        val detailList = detailBanDao.getDetailsByCheckId(idCek)
-        if (detailList.isEmpty()) return null
-
-        val detailMap = detailList.associateBy { it.posisiBan }
-
-        val pengukuranMap = detailList.associate { detail ->
-            detail.posisiBan to pengukuranAlurDao.getPengukuranByDetailBanId(detail.idDetail)
-        }
-
-        fun createAlurBan(pengukuran: PengukuranAlur?): AlurBan? {
-            return pengukuran?.let {
-                AlurBan(
-                    alur1 = it.alur1,
-                    alur2 = it.alur2,
-                    alur3 = it.alur3,
-                    alur4 = it.alur4
-                )
+            // 1. Ambil Pengecekan
+            val check = pengecekanDao.getPengecekanById(idCek)
+            if (check == null) {
+                Log.e(TAG, "❌ Pengecekan tidak ditemukan untuk idCek=$idCek")
+                return@withContext null
             }
+            Log.d(TAG, "✅ Pengecekan ditemukan: $check")
+
+            // 2. Ambil Bus
+            val bus = busDao.getBusById(check.busId)
+            if (bus == null) {
+                Log.e(TAG, "❌ Bus tidak ditemukan untuk busId=${check.busId}")
+                return@withContext null
+            }
+            Log.d(TAG, "✅ Bus ditemukan: ${bus.namaBus} (${bus.platNomor})")
+
+            // 3. Ambil semua DetailBan untuk pengecekan ini
+            val detailList = detailBanDao.getDetailsByCheckId(idCek)
+            Log.d(TAG, "📋 DetailBan count: ${detailList.size}")
+
+            if (detailList.isEmpty()) {
+                Log.e(TAG, "❌ Tidak ada DetailBan untuk idCek=$idCek")
+                return@withContext null
+            }
+
+            // Log semua detail ban
+            detailList.forEach { detail ->
+                Log.d(TAG, "  - DetailBan: posisi=${detail.posisiBan}, status=${detail.status}, idDetail=${detail.idDetail}")
+            }
+
+            // 4. Buat map posisi -> DetailBan
+            val detailMap = detailList.associateBy { it.posisiBan }
+
+            // 5. Ambil semua PengukuranAlur
+            val pengukuranMap = mutableMapOf<String, PengukuranAlur?>()
+
+            for (detail in detailList) {
+                val pengukuran = pengukuranAlurDao.getPengukuranByDetailBanId(detail.idDetail)
+                pengukuranMap[detail.posisiBan] = pengukuran
+
+                if (pengukuran != null) {
+                    Log.d(TAG, "  ✅ Pengukuran ${detail.posisiBan}: alur1=${pengukuran.alur1}, alur2=${pengukuran.alur2}, alur3=${pengukuran.alur3}, alur4=${pengukuran.alur4}")
+                } else {
+                    Log.w(TAG, "  ⚠️ Pengukuran ${detail.posisiBan}: NULL")
+                }
+            }
+
+            // 6. Helper function untuk convert PengukuranAlur -> AlurBan
+            fun createAlurBan(pengukuran: PengukuranAlur?): AlurBan? {
+                return pengukuran?.let {
+                    AlurBan(
+                        alur1 = it.alur1,
+                        alur2 = it.alur2,
+                        alur3 = it.alur3,
+                        alur4 = it.alur4
+                    )
+                }
+            }
+
+            // 7. Build CheckDetail dengan mapping yang BENAR
+            val checkDetail = CheckDetail(
+                idCek = check.idPengecekan,
+                tanggalCek = check.tanggalMs,
+                tanggalReadable = DateUtils.formatDate(check.tanggalMs),
+                waktuReadable = DateUtils.formatTime(check.waktuMs),
+                namaBus = bus.namaBus,
+                platNomor = bus.platNomor,
+
+                // ✅ Status mapping (dari DetailBan atau fallback ke Pengecekan)
+                statusDka = detailMap["DKA"]?.status ?: check.statusDka,
+                statusDki = detailMap["DKI"]?.status ?: check.statusDki,
+                statusBka = detailMap["BKA"]?.status ?: check.statusBka,
+                statusBki = detailMap["BKI"]?.status ?: check.statusBki,
+
+                // ✅ Alur mapping
+                alurDka = createAlurBan(pengukuranMap["DKA"]),
+                alurDki = createAlurBan(pengukuranMap["DKI"]),
+                alurBka = createAlurBan(pengukuranMap["BKA"]),
+                alurBki = createAlurBan(pengukuranMap["BKI"])
+            )
+
+            Log.d(TAG, "✅ CheckDetail berhasil dibuat:")
+            Log.d(TAG, "   - DKA: status=${checkDetail.statusDka}, alur=${checkDetail.alurDka}")
+            Log.d(TAG, "   - DKI: status=${checkDetail.statusDki}, alur=${checkDetail.alurDki}")
+            Log.d(TAG, "   - BKA: status=${checkDetail.statusBka}, alur=${checkDetail.alurBka}")
+            Log.d(TAG, "   - BKI: status=${checkDetail.statusBki}, alur=${checkDetail.alurBki}")
+            Log.d(TAG, "========== END getCheckDetail ==========")
+
+            return@withContext checkDetail
+
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ ERROR di getCheckDetail: ${e.message}", e)
+            return@withContext null
         }
-
-        return CheckDetail(
-            idCek = check.idPengecekan,
-            tanggalCek = check.tanggalMs,
-            tanggalReadable = DateUtils.formatDate(check.tanggalMs),
-            waktuReadable = DateUtils.formatTime(check.waktuMs),
-            namaBus = bus.namaBus,
-            platNomor = bus.platNomor,
-
-            // ✅ Corrected status mapping
-            statusDka = detailMap["DKA"]?.status,
-            statusDki = detailMap["DKI"]?.status,
-            statusBka = detailMap["BKA"]?.status,
-            statusBki = detailMap["BKI"]?.status,
-
-            // ✅ Corrected alur mapping
-            alurDka = createAlurBan(pengukuranMap["DKA"]),
-            alurDki = createAlurBan(pengukuranMap["DKI"]),
-            alurBka = createAlurBan(pengukuranMap["BKA"]),
-            alurBki = createAlurBan(pengukuranMap["BKI"]),
-        )
     }
-
 
     suspend fun deletePengecekanById(id: Long): Result<Unit> {
         return try {
@@ -314,12 +369,10 @@ class TetiresRepository(
         }
     }
 
-    // Gunakan logika < 1.6f untuk menentukan aus
     suspend fun completeCheck(idCek: Long) {
         val detailList = detailBanDao.getDetailsByCheckId(idCek)
         for (detail in detailList) {
             if (detail.status == null) {
-                // Ambil pengukuran untuk ban
                 val pengukuran = pengukuranAlurDao.getPengukuranByDetailBanId(detail.idDetail)
                 if (pengukuran != null) {
                     val alurList = listOfNotNull(
@@ -329,7 +382,6 @@ class TetiresRepository(
                         pengukuran.alur4
                     )
                     if (alurList.isNotEmpty()) {
-                        // Ambil nilai minimum, lalu cek < 1.6f
                         val minAlur = alurList.minOrNull() ?: 0f
                         val isAus = minAlur < 1.6f
                         detailBanDao.updateDetailBan(detail.copy(status = isAus))
@@ -339,19 +391,13 @@ class TetiresRepository(
         }
     }
 
-    /**
-     * Helper function untuk mengambil semua pengukuran alur berdasarkan list pengecekan IDs
-     * Returns Map<idPengecekan, List<PengukuranWithPosisi>>
-     */
     suspend fun getPengukuranMapByPengecekanIdsForExport(
         pengecekanIds: List<Long>
     ): Map<Long, List<DownloadHelper.PengukuranWithPosisi>> {
         if (pengecekanIds.isEmpty()) return emptyMap()
 
-        // Query untuk ambil semua pengukuran dengan posisi ban
         val pengukuranEntities = pengecekanDao.getPengukuranByPengecekanIds(pengecekanIds)
 
-        // Convert ke Map untuk lookup cepat
         return pengukuranEntities.groupBy { it.pengecekanId }
             .mapValues { entry ->
                 entry.value.map { entity ->
@@ -370,8 +416,6 @@ class TetiresRepository(
             }
     }
 
-
-    // ========== LOGIKA STATUS ==========
     private fun computeSummaryStatus(
         dka: Boolean?,
         dki: Boolean?,
@@ -380,17 +424,14 @@ class TetiresRepository(
     ): String {
         val list = listOf(dka, dki, bka, bki)
 
-        // Jika ada yang null → belum selesai
         if (list.any { it == null }) {
             return "Belum Selesai"
         }
 
-        // Jika ada minimal 1 ban aus (true) → AUS
         if (list.any { it == true }) {
             return "Aus"
         }
 
-        // Jika SEMUA ban tidak aus (semua false) → TIDAK AUS
         return "Tidak Aus"
     }
 }

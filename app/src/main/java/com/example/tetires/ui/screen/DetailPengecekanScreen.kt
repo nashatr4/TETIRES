@@ -63,15 +63,15 @@ fun DetailPengecekanScreen(
 
                 // Layout Ban 2x2 dengan 4 alur per ban
                 Row(modifier = Modifier.fillMaxWidth()) {
-                    BanDetailCard("Depan Kiri", d.statusDki, d.alurDki, Modifier.weight(1f))
+                    BanDetailCard("Depan Kiri", d.statusDki, d.alurDki, Modifier.weight(3f))
                     Spacer(modifier = Modifier.width(10.dp))
-                    BanDetailCard("Depan Kanan", d.statusDka, d.alurDka, Modifier.weight(1f))
+                    BanDetailCard("Depan Kanan", d.statusDka, d.alurDka, Modifier.weight(3f))
                 }
 
                 Row(modifier = Modifier.fillMaxWidth()) {
-                    BanDetailCard("Belakang Kiri", d.statusBki, d.alurBki, Modifier.weight(1f))
+                    BanDetailCard("Belakang Kiri", d.statusBki, d.alurBki, Modifier.weight(3f))
                     Spacer(modifier = Modifier.width(10.dp))
-                    BanDetailCard("Belakang Kanan", d.statusBka, d.alurBka, Modifier.weight(1f))
+                    BanDetailCard("Belakang Kanan", d.statusBka, d.alurBka, Modifier.weight(3f))
                 }
             }
         } ?: Box(
@@ -184,17 +184,17 @@ fun DetailPengecekanContent(detail: CheckDetail) {
 
         // 🔹 Layout Ban 2x2
         Row(modifier = Modifier.fillMaxWidth()) {
-            BanDetailCard("Depan Kiri", detail.statusDki, detail.alurDki, Modifier.weight(1f))
+            BanDetailCard("Depan Kiri", detail.statusDki, detail.alurDki, Modifier.weight(3f))
             Spacer(modifier = Modifier.width(10.dp))
-            BanDetailCard("Depan Kanan", detail.statusDka, detail.alurDka, Modifier.weight(1f))
+            BanDetailCard("Depan Kanan", detail.statusDka, detail.alurDka, Modifier.weight(3f))
         }
 
         Spacer(modifier = Modifier.height(10.dp))
 
         Row(modifier = Modifier.fillMaxWidth()) {
-            BanDetailCard("Belakang Kiri", detail.statusBki, detail.alurBki, Modifier.weight(1f))
+            BanDetailCard("Belakang Kiri", detail.statusBki, detail.alurBki, Modifier.weight(3f))
             Spacer(modifier = Modifier.width(10.dp))
-            BanDetailCard("Belakang Kanan", detail.statusBka, detail.alurBka, Modifier.weight(1f))
+            BanDetailCard("Belakang Kanan", detail.statusBka, detail.alurBka, Modifier.weight(3f))
         }
     }
 }
@@ -293,7 +293,7 @@ private fun AlurRow(
     isWorn: Boolean,
     isMissing: Boolean
 ) {
-    val textValue = value?.let { "%.1f mm".format(it) } ?: "N/A"
+    val textValue = value?.let { "%.3f mm".format(it) } ?: "N/A"
 
     val color = when {
         isMissing -> Color.Gray
@@ -303,7 +303,7 @@ private fun AlurRow(
 
     val bgColor = when {
         isMissing -> Color.Transparent
-        isWorn -> Color(0xFFEF4444).copy(alpha = 0.1f) // Background merah muda
+        isWorn -> Color(0xFFEF4444).copy(alpha = 0.3f) // Background merah muda
         else -> Color.Transparent
     }
 
@@ -443,17 +443,17 @@ fun DetailPengecekanPreviewUI(detail: DummyCheckDetail, statusMessage: String?) 
         Spacer(modifier = Modifier.height(24.dp))
 
         Row(modifier = Modifier.fillMaxWidth()) {
-            BanDetailCard("Depan Kiri", detail.statusDki, detail.ukDki, Modifier.weight(1f))
+            BanDetailCard("Depan Kiri", detail.statusDki, detail.ukDki, Modifier.weight(3f))
             Spacer(modifier = Modifier.width(16.dp))
-            BanDetailCard("Depan Kanan", detail.statusDka, detail.ukDka, Modifier.weight(1f))
+            BanDetailCard("Depan Kanan", detail.statusDka, detail.ukDka, Modifier.weight(3f))
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
         Row(modifier = Modifier.fillMaxWidth()) {
-            BanDetailCard("Belakang Kiri", detail.statusBki, detail.ukBki, Modifier.weight(1f))
+            BanDetailCard("Belakang Kiri", detail.statusBki, detail.ukBki, Modifier.weight(3f))
             Spacer(modifier = Modifier.width(16.dp))
-            BanDetailCard("Belakang Kanan", detail.statusBka, detail.ukBka, Modifier.weight(1f))
+            BanDetailCard("Belakang Kanan", detail.statusBka, detail.ukBka, Modifier.weight(3f))
         }
 
         Spacer(modifier = Modifier.height(20.dp))
