@@ -2,29 +2,31 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Bluetooth Permissions -->
+    <!-- ====== BLUETOOTH PERMISSIONS ====== -->
+    <!-- Legacy support (Android 11 and below) -->
     <uses-permission android:name="android.permission.BLUETOOTH" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
 
-    <!-- Android 12+ (API 31+) Bluetooth Permissions -->
-    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <!-- Android 12+ Runtime Permissions -->
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
-        android:usesPermissionFlags="neverForLocation"/>
+        android:usesPermissionFlags="neverForLocation" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
 
-    <!-- Storage Permissions (Android 9 and below) -->
+    <!-- ===== USB (if you need USB Host) ====== -->
+    <uses-feature android:name="android.hardware.usb.host" android:required="false" />
+
+    <!-- ====== STORAGE (only if required for older Android) ====== -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="29" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
 
-    <!-- Bluetooth Feature -->
+    <!-- ====== BLUETOOTH FEATURE ====== -->
     <uses-feature
         android:name="android.hardware.bluetooth"
         android:required="true" />
 
-    <!-- 🔥 USB Permissions -->
-    <uses-feature android:name="android.hardware.usb.host" android:required="false" />
     <application
         android:name=".TetiresApplication"
         android:allowBackup="true"
@@ -46,11 +48,7 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
-                <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
             </intent-filter>
-            <meta-data
-                android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
-                android:resource="@xml/usb_device_filter" />
         </activity>
 
         <!-- FileProvider untuk share files -->
