@@ -10,7 +10,7 @@ data class AlurBan(
         get() = listOfNotNull(alur1, alur2, alur3, alur4).minOrNull()
 
     val formattedMinAlur: String
-        get() = minAlur?.let { "%.1f mm".format(it) } ?: "N/A"
+        get() = minAlur?.let { "%.3f mm".format(it) } ?: "N/A"
 
     data class AlurDisplay(
         val label: String,
