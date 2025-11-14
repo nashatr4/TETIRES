@@ -351,7 +351,7 @@ fun ResultIcon(
         // Show groove depth text with same color logic
         result?.let {
             Text(
-                text = "${"%.2f".format(it.minGroove)} mm",
+                text = "${"%.3f".format(it.minGroove)} mm",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 color = if (it.minGroove < 1.6f) Color(0xFFEF4444) else Color(0xFF10B981)
@@ -389,7 +389,8 @@ fun ActionButtons(
                 Button(
                     onClick = onStartScan,
                     modifier = Modifier.size(250.dp, 56.dp),
-                    shape = RoundedCornerShape(50.dp)
+                    shape = RoundedCornerShape(50.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3949A3))
                 ) {
                     Text("Mulai Scan", fontWeight = FontWeight.Bold)
                 }
