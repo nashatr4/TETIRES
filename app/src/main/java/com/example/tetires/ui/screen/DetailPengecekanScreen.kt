@@ -55,7 +55,8 @@ fun DetailPengecekanScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                    .padding(horizontal = 20.dp, vertical = 16.dp)
+                    .background(Color.White),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 // Info Bus Card

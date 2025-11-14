@@ -2,6 +2,7 @@ package com.example.tetires.ui.screen
 
 import android.app.Application
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -85,7 +86,8 @@ fun CekBanScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp),
+                .padding(16.dp)
+                .background(Color.White),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             StateIndicatorCard(
