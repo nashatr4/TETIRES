@@ -39,6 +39,7 @@ fun DetailPengecekanScreen(
     val detail by viewModel.checkDetail.collectAsState()
 
     Scaffold(
+        containerColor = Color.White,
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text("Detail Pengecekan", fontWeight = FontWeight.Bold) },
@@ -46,7 +47,10 @@ fun DetailPengecekanScreen(
                     IconButton(onClick = { navController.navigateUp() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
                     }
-                }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = Color.White
+                )
             )
         }
     ) { paddingValues ->
@@ -55,8 +59,7 @@ fun DetailPengecekanScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .padding(horizontal = 20.dp, vertical = 16.dp)
-                    .background(Color.White),
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 // Info Bus Card

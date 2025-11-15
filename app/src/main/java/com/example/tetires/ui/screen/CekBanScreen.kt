@@ -67,6 +67,7 @@ fun CekBanScreen(
     }
 
     Scaffold(
+        containerColor = Color.White,
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text("Cek Ban", fontWeight = FontWeight.Bold) },
@@ -77,7 +78,10 @@ fun CekBanScreen(
                     }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
                     }
-                }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = Color.White
+                )
             )
         },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
@@ -85,9 +89,9 @@ fun CekBanScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .background(Color.White)
                 .padding(padding)
-                .padding(16.dp)
-                .background(Color.White),
+                .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             StateIndicatorCard(
