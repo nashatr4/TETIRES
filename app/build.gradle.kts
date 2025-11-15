@@ -106,6 +106,7 @@ dependencies {
 
     // ConstraintLayout Compose
     implementation("androidx.constraintlayout:constraintlayout-compose:1.0.1")
+    implementation(libs.androidx.core.splashscreen)
 
     // Compose Runtime LiveData
     implementation("androidx.compose.runtime:runtime-livedata:1.9.2")

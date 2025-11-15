@@ -151,7 +151,7 @@ fun TopAppBar() {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Image(
-                    painter = painterResource(id = R.drawable.tirelogo),
+                    painter = painterResource(id = R.drawable.tetireslogofix),
                     contentDescription = "Logo Tetires Hitam",
                     modifier = Modifier.size(55.dp)
                 )
