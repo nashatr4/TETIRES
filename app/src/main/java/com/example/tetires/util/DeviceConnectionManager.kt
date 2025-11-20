@@ -1,5 +1,6 @@
 package com.example.tetires.util
 
+import android.R.attr.delay
 import android.app.Application
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -92,8 +93,8 @@ class DeviceConnectionManager(
 
                 if (_activeDevice.value == DeviceType.BLUETOOTH) {
                     _isConnected.value = true
-                    _deviceInfo.value = "Bluetooth: HC-05"
-                    onStatusChange?.invoke("Connected to Bluetooth HC-05")
+                    _deviceInfo.value = "Bluetooth: TETIRES"
+                    onStatusChange?.invoke("Connected to Bluetooth TETIRES")
                 }
             }
         }
@@ -219,7 +220,7 @@ class DeviceConnectionManager(
     }
 
     /**
-     * Check if Bluetooth is available and HC-05 is paired
+     * Check if Bluetooth is available and TETIRES is paired
      */
     private fun isBluetoothAvailable(): Boolean {
         return bluetoothHelper.isBluetoothEnabled() &&

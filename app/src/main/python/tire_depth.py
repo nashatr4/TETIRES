@@ -2,7 +2,11 @@ import json
 import re
 from typing import Any
 
-# MODEL DARI COLAB
+# ============================================================================
+# MODEL KALIBRASI (dari hasil training Colab terbaik)
+# ============================================================================
+
+# Model DALAM: untuk kedalaman >= 8mm
 model_dalam = {
     "min": 1717.81055814,
     "max": 2642.29232265,
@@ -10,6 +14,7 @@ model_dalam = {
     "intercept": 11.879767975539409
 }
 
+# Model DANGKAL: untuk kedalaman 0-5mm
 model_dangkal = {
     "min": 1503.08228732,
     "max": 2954.71073448,
@@ -17,29 +22,25 @@ model_dangkal = {
     "intercept": 0.9643865647697497
 }
 
-# FILTER BUTTERWORTH
+# Koefisien Filter Butterworth
 b_coef = [0.0674553, 0.134911, 0.0674553]
 a_coef = [-1.14298, 0.412801]
 
+# ============================================================================
+# FUNGSI FILTER BUTTERWORTH
+# ============================================================================
 
-# -------------------------
-# Butterworth implementation
-# -------------------------
 def butter_lowpass_filter(data, b, a):
     """
-    Direct-form IIR forward filter (biquad-like) for 2nd order coefficients.
-    This is a manual implementation similar to scipy.signal.lfilter for these
-    specific coefficients.
+    Forward pass filter Butterworth order-2
     """
     n = len(data)
     if n == 0:
         return []
     if n < 3:
-        # fallback: return copy
         return data[:]
 
     y = [0.0] * n
-    # initialize using safe formulas
     y[0] = b[0] * data[0]
     y[1] = b[0] * data[1] + b[1] * data[0] - a[0] * y[0]
 
@@ -56,41 +57,40 @@ def butter_lowpass_filter(data, b, a):
 
 def butter_filtfilt(data, b, a):
     """
-    Zero-phase filtering: forward then backward pass.
-    Returns filtered list same length as input.
+    Zero-phase filtering: forward + backward pass
     """
     if not data:
         return []
     if len(data) < 3:
         return data[:]
+
     forward = butter_lowpass_filter(data, b, a)
     backward = butter_lowpass_filter(forward[::-1], b, a)
     return backward[::-1]
 
 
-# -------------------------
-# Safe converter for ArrayList (Chaquopy)
-# -------------------------
+# ============================================================================
+# CONVERTER UNTUK CHAQUOPY (Java ArrayList)
+# ============================================================================
+
 def to_python_list(obj: Any):
     """
-    Convert possible Java ArrayList or iterable to Python list.
-    Returns list of strings or original list items if already Python list.
+    Convert Java ArrayList atau iterable ke Python list
     """
-    # Already a native list
     if isinstance(obj, list):
         return obj
-    # Try to cast to list
+
     try:
         return list(obj)
     except Exception:
         pass
-    # Try Java-style .size() and .get(i)
+
     try:
         size = obj.size()
         return [obj.get(i) for i in range(size)]
     except Exception:
         pass
-    # Try Java-style iterator
+
     try:
         it = obj.iterator()
         out = []
@@ -99,21 +99,24 @@ def to_python_list(obj: Any):
         return out
     except Exception:
         pass
-    # Can't convert: return empty
+
     return []
 
 
-# -------------------------
-# CCD parser (multi-sensor)
-# -------------------------
+# ============================================================================
+# PARSER CCD DATA (MULTI-SENSOR)
+# ============================================================================
+
 def parse_ccd_raw_lines(raw_lines):
     """
-    Parse many lines coming from Chaquopy (ArrayList of strings) that
-    contain multiple sensor blocks like:
+    Parse log CCD multi-sensor.
+    Format:
       --- SENSOR 1 ---
       Pixel[   0]: 1234.56 mV
       ...
-    Returns a dict sensors: {1: [voltages], 2: [...], ..., 6: [...]}
+
+    Returns:
+      dict {sensor_id: [voltages]}
     """
     lines = to_python_list(raw_lines)
     sensor_pattern = re.compile(r"---\s*SENSOR\s+(\d+)\s*---", re.IGNORECASE)
@@ -129,11 +132,13 @@ def parse_ccd_raw_lines(raw_lines):
         if not line:
             continue
 
+        # Deteksi marker sensor
         m_sensor = sensor_pattern.match(line)
         if m_sensor:
             current_sensor = int(m_sensor.group(1))
             continue
 
+        # Parse pixel data
         m_pixel = pixel_pattern.search(line)
         if m_pixel and current_sensor is not None:
             try:
@@ -141,47 +146,77 @@ def parse_ccd_raw_lines(raw_lines):
                 voltage = float(m_pixel.group(2))
             except Exception:
                 continue
-            # keep only pixels in your stated window (280..1080)
+
+            # PENTING: Filter pixel range yang valid (280-1080)
+            # Range ini harus konsisten dengan training!
             if 280 <= pixel_idx <= 1080:
                 sensors.setdefault(current_sensor, []).append(voltage)
 
     return sensors
 
 
-# -------------------------
-# Valley detection (multi-sensor)
-# -------------------------
+# ============================================================================
+# DETEKSI VALLEY (NILAI MINIMUM SETELAH FILTERING)
+# ============================================================================
+
 def detect_valleys_from_sensors(sensors: dict):
     """
-    sensors: dict {sensor_id: [voltages]}
+    Deteksi valley (nilai minimum) dari setiap sensor setelah filtering.
+
     Returns:
-      valleys: list length 6 with valley value (or None if not enough data)
-      details: dict mapping sensor_id -> {filtered, valley_index, valley_value}
+      valleys: list[float or None] - 6 nilai valley (None jika data tidak cukup)
+      details: dict dengan info detail per sensor
     """
     valleys = []
     details = {}
+
     for sid in range(1, 7):
         data = sensors.get(sid, [])
+
+        # Minimal 50 data point untuk filtering yang reliable
         if len(data) < 50:
             valleys.append(None)
-            details[sid] = {"filtered": [], "valley_index": None, "valley_value": None, "pixel_count": len(data)}
+            details[sid] = {
+                "filtered": [],
+                "valley_index": None,
+                "valley_value": None,
+                "pixel_count": len(data)
+            }
             continue
+
+        # Filter data
         filtered = butter_filtfilt(data, b_coef, a_coef)
-        # find min value (valley) and its index
+
+        # Cari nilai minimum (valley)
         min_val = min(filtered)
         min_idx = filtered.index(min_val)
+
         valleys.append(min_val)
-        details[sid] = {"filtered": filtered, "valley_index": min_idx, "valley_value": min_val, "pixel_count": len(data)}
+        details[sid] = {
+            "filtered": filtered,
+            "valley_index": min_idx,
+            "valley_value": min_val,
+            "pixel_count": len(data)
+        }
+
     return valleys, details
 
 
-# -------------------------
-# Model chooser
-# -------------------------
+# ============================================================================
+# PEMILIHAN MODEL OTOMATIS
+# ============================================================================
+
 def choose_model_from_sensors(sensors: dict):
     """
-    Logic: check sensors 1 and 6 after filtering. If both have >2 values above threshold -> DANGKAL
-    Else -> DALAM
+    Logika pemilihan model berdasarkan karakteristik sensor 1 dan 6.
+
+    KRITERIA:
+    - Jika sensor 1 dan 6 KEDUA-DUANYA memiliki >2 pixel dengan voltage >2801 mV
+      setelah filtering → gunakan model DANGKAL
+    - Selain itu → gunakan model DALAM
+
+    Returns:
+      (model_dict, label_string)
     """
     def safe_filter(sig):
         if len(sig) < 3:
@@ -194,19 +229,27 @@ def choose_model_from_sensors(sensors: dict):
     f1 = safe_filter(s1)
     f6 = safe_filter(s6)
 
-    th_high = 2801
+    # Threshold untuk deteksi kondisi dangkal
+    th_high = 2801  # mV
+
+    # Hitung berapa pixel di atas threshold
     c1 = sum(1 for v in f1 if v > th_high)
     c6 = sum(1 for v in f6 if v > th_high)
 
+    # Logika keputusan
     if c1 > 2 and c6 > 2:
         return model_dangkal, "DANGKAL"
     return model_dalam, "DALAM"
 
 
-# -------------------------
-# Min-max scaler & linear predict
-# -------------------------
+# ============================================================================
+# MIN-MAX SCALER & LINEAR PREDICTION
+# ============================================================================
+
 def transform_minmax(values, mn, mx):
+    """
+    Normalisasi nilai ke range [0, 1]
+    """
     out = []
     for v in values:
         if v is None:
@@ -220,30 +263,50 @@ def transform_minmax(values, mn, mx):
 
 
 def predict_linear(slope, intercept, x):
+    """
+    Prediksi linear: y = slope * x + intercept
+    """
     if x is None:
         return None
     return slope * x + intercept
 
 
-# -------------------------
-# Main multi-sensor pipeline (process_file)
-# -------------------------
+# ============================================================================
+# PIPELINE UTAMA: MULTI-SENSOR PROCESSING
+# ============================================================================
+
 def process_file(raw_lines):
+    """
+    Pipeline lengkap untuk prediksi kedalaman tapak ban dari data CCD multi-sensor.
+
+    Returns:
+      JSON string dengan hasil prediksi
+    """
     try:
+        # 1. Parse data CCD
         sensors = parse_ccd_raw_lines(raw_lines)
 
-        # check any sensor has data
+        # Validasi: apakah ada data?
         total_pixels = sum(len(v) for v in sensors.values())
         if total_pixels == 0:
-            return json.dumps({"success": False, "message": "No CCD data found"})
+            return json.dumps({
+                "success": False,
+                "message": "No CCD data found in valid pixel range (280-1080)"
+            })
 
+        # 2. Deteksi valley dari setiap sensor
         valleys, details = detect_valleys_from_sensors(sensors)
 
+        # 3. Pilih model kalibrasi yang sesuai
         model, label = choose_model_from_sensors(sensors)
 
+        # 4. Normalisasi valley values
         scaled = transform_minmax(valleys, model["min"], model["max"])
+
+        # 5. Prediksi kedalaman
         depths = [predict_linear(model["slope"], model["intercept"], s) for s in scaled]
 
+        # 6. Susun data per sensor
         data = []
         for i in range(6):
             data.append({
@@ -254,18 +317,38 @@ def process_file(raw_lines):
                 "pixel_count": details[i+1]["pixel_count"]
             })
 
-        # select 4 smallest depths (ignore None)
+        # 7. Ambil 4 sensor dengan kedalaman terkecil (area paling tipis)
         valid = [d for d in data if d["depth"] is not None]
+
         if len(valid) < 4:
-            # fallback behavior: if fewer than 4 valid, use as many as available
+            # Jika kurang dari 4 sensor valid, gunakan sebanyak yang ada
             smallest4 = sorted(valid, key=lambda x: x["depth"])[:max(1, len(valid))]
             min_depth = smallest4[0]["depth"] if smallest4 else None
             avg_depth = (sum(x["depth"] for x in smallest4) / len(smallest4)) if smallest4 else None
         else:
+            # Ambil 4 terkecil
             smallest4 = sorted(valid, key=lambda x: x["depth"])[:4]
             min_depth = smallest4[0]["depth"]
             avg_depth = sum(x["depth"] for x in smallest4) / 4
 
+        # 8. Interpretasi kondisi ban
+        condition_status = "UNKNOWN"
+        condition_detail = ""
+        if min_depth is not None:
+            if min_depth < 1.6:
+                condition_status = "AUS"
+                condition_detail = "⚠️ Kedalaman < 1.6mm (batas legal). Ban WAJIB diganti!"
+            elif min_depth < 2.0:
+                condition_status = "HAMPIR_AUS"
+                condition_detail = "⚡ Kedalaman mendekati batas. Persiapkan penggantian!"
+            elif min_depth < 3.0:
+                condition_status = "NORMAL"
+                condition_detail = "✅ Kedalaman memadai. Pantau berkala."
+            else:
+                condition_status = "BAIK"
+                condition_detail = "✅ Kondisi sangat baik."
+
+        # 9. Return hasil dalam format JSON
         return json.dumps({
             "success": True,
             "model_used": label,
@@ -273,29 +356,37 @@ def process_file(raw_lines):
             "data": data,
             "smallest_4": smallest4,
             "min_depth": min_depth,
-            "avg_depth": avg_depth
+            "avg_depth": avg_depth,
+            "condition_status": condition_status,
+            "condition_detail": condition_detail
         }, indent=2)
 
     except Exception as e:
-        return json.dumps({"success": False, "message": f"process_file exception: {str(e)}"})
+        return json.dumps({
+            "success": False,
+            "message": f"process_file exception: {str(e)}"
+        })
 
 
-# -------------------------
-# Single-sensor (4 grooves) pipeline
-# -------------------------
+# ============================================================================
+# SINGLE-SENSOR PROCESSING (untuk 4 grooves)
+# ============================================================================
+
 def process_single_sensor(raw_lines):
     """
-    Assumes raw_lines correspond to a single sensor reading (many Pixel[...] lines)
-    Returns measurements for 4 grooves (approximation using segmentation).
-    This is a simple heuristic: splits the pixel window into 4 equal regions,
-    filter each region and estimate 'thickness' using a linear calibration.
+    Proses data single sensor dengan asumsi 4 groove (alur ban).
+    Ini digunakan untuk mode pengukuran lain.
     """
     try:
         lines = to_python_list(raw_lines)
         if not lines:
-            return json.dumps({"success": False, "message": "Empty data", "result": None})
+            return json.dumps({
+                "success": False,
+                "message": "Empty data",
+                "result": None
+            })
 
-        # parse voltages only (ignore sensor markers)
+        # Parse voltages
         pixel_pattern = re.compile(r"Pixel\[\s*(\d+)\s*\]:\s*([\d\.]+)\s*mV", re.IGNORECASE)
         voltages = []
         for raw in lines:
@@ -307,17 +398,21 @@ def process_single_sensor(raw_lines):
                 voltages.append(float(m.group(2)))
 
         if len(voltages) < 50:
-            return json.dumps({"success": False, "message": "Not enough pixels in single sensor", "result": None})
+            return json.dumps({
+                "success": False,
+                "message": "Not enough pixels in single sensor",
+                "result": None
+            })
 
+        # Filter data
         filtered = butter_filtfilt(voltages, b_coef, a_coef)
 
-        # split into 4 equal segments (heuristic for 4 grooves)
+        # Split menjadi 4 segment (untuk 4 groove)
         n = len(filtered)
         seg = n // 4
         groove_thicknesses = {}
-        all_voltages_filtered = filtered
 
-        # calibration constants (example from your earlier snippet)
+        # Kalibrasi sederhana (linear)
         a = 0.00422
         b = 0.0
 
@@ -332,6 +427,7 @@ def process_single_sensor(raw_lines):
             thickness_mm = max(0.0, a * mean_v + b)
             groove_thicknesses[i + 1] = round(thickness_mm, 2)
 
+        # Cek kondisi aus
         valid = [g for g in groove_thicknesses.values() if g > 0]
         is_worn = False
         if valid:
@@ -341,10 +437,11 @@ def process_single_sensor(raw_lines):
             is_worn = True
             min_groove = 0.0
 
-        voltage_mean_total = sum(all_voltages_filtered) / len(all_voltages_filtered)
-        voltage_std_total = (sum((x - voltage_mean_total) ** 2 for x in all_voltages_filtered) / len(all_voltages_filtered)) ** 0.5
-        adc_mean = (voltage_mean_total / 3300.0) * 4095
-        adc_std = (voltage_std_total / 3300.0) * 4095
+        # Statistik voltage
+        voltage_mean = sum(filtered) / len(filtered)
+        voltage_std = (sum((x - voltage_mean) ** 2 for x in filtered) / len(filtered)) ** 0.5
+        adc_mean = (voltage_mean / 3300.0) * 4095
+        adc_std = (voltage_std / 3300.0) * 4095
 
         result_data = {
             "alur1": groove_thicknesses.get(1, 0.0),
@@ -354,7 +451,7 @@ def process_single_sensor(raw_lines):
             "is_worn": is_worn,
             "adc_mean": round(adc_mean, 2),
             "adc_std": round(adc_std, 2),
-            "voltage_mV": round(voltage_mean_total, 2),
+            "voltage_mV": round(voltage_mean, 2),
             "pixel_count": len(voltages)
         }
 
@@ -367,25 +464,35 @@ def process_single_sensor(raw_lines):
         })
 
     except Exception as e:
-        return json.dumps({"success": False, "message": f"process_single_sensor exception: {str(e)}", "result": None})
+        return json.dumps({
+            "success": False,
+            "message": f"process_single_sensor exception: {str(e)}",
+            "result": None
+        })
 
 
-# -------------------------
-# Dispatcher: predict_file (robust)
-# -------------------------
+# ============================================================================
+# DISPATCHER: ENTRYPOINT UTAMA
+# ============================================================================
+
 def predict_file(raw_input, model_dalam_in=None, model_dangkal_in=None, b_in=None, a_in=None):
     """
-    Unified entrypoint that accepts either:
-      - a Java/Chaquopy ArrayList of lines (typical)
-      - a Python list of lines
-      - a path string to a file (will .read().splitlines())
-      - a raw string containing multiple lines
+    Fungsi utama yang dipanggil dari APK.
+    Otomatis mendeteksi tipe input dan memproses sesuai.
 
-    It will first try to parse as multi-sensor CCD (process_file). If
-    that returns no data or errors, it will try process_single_sensor.
+    Parameters:
+      raw_input: bisa berupa:
+        - Java ArrayList dari Chaquopy
+        - Python list of strings
+        - String path ke file
+        - Raw string berisi data log
+
+    Returns:
+      JSON string dengan hasil prediksi
     """
-    # allow optional override of models/coefficients (not used in current impl)
     global model_dalam, model_dangkal, b_coef, a_coef
+
+    # Override model/koefisien jika diperlukan
     if model_dalam_in is not None:
         model_dalam = model_dalam_in
     if model_dangkal_in is not None:
@@ -395,40 +502,63 @@ def predict_file(raw_input, model_dalam_in=None, model_dangkal_in=None, b_in=Non
     if a_in is not None:
         a_coef = a_in
 
-    # Normalize input into list of lines
+    # Normalize input menjadi list of lines
     lines = None
     if isinstance(raw_input, str):
-        # if looks like a path (heuristic: contains OS newline but not sensor markers),
-        # still try to open safely; otherwise treat as raw content
         try:
-            # try open file
+            # Coba buka sebagai file
             with open(raw_input, "r", encoding="utf-8") as f:
                 content = f.read()
             lines = content.splitlines()
         except Exception:
-            # treat raw_input as raw text containing newlines
+            # Treat sebagai raw text
             lines = raw_input.splitlines()
     else:
-        # try to convert from ArrayList / iterable
+        # Convert dari ArrayList atau iterable
         lines = to_python_list(raw_input)
 
-    # First attempt: multi-sensor CCD
+    # Prioritas 1: Coba multi-sensor CCD
     try:
         res_multi = process_file(lines)
         res_obj = json.loads(res_multi)
         if res_obj.get("success"):
             return res_multi
     except Exception:
-        # if that fails, try single-sensor
         pass
 
-    # Second attempt: single-sensor
+    # Prioritas 2: Coba single-sensor
     try:
         return process_single_sensor(lines)
     except Exception as e:
-        return json.dumps({"success": False, "message": f"predict_file fallback exception: {str(e)}"})
+        return json.dumps({
+            "success": False,
+            "message": f"predict_file fallback exception: {str(e)}"
+        })
 
 
-# convenience wrappers that match original names
+# Wrapper untuk kompatibilitas
 def process_single_sensor_file(file_path):
+    """Wrapper untuk backward compatibility"""
     return predict_file(file_path)
+
+
+# ============================================================================
+# EXPORT MODEL PARAMETERS (untuk debugging/logging)
+# ============================================================================
+
+def get_model_info():
+    """
+    Return informasi model yang sedang digunakan
+    """
+    return json.dumps({
+        "model_dalam": model_dalam,
+        "model_dangkal": model_dangkal,
+        "filter_coefficients": {
+            "b": b_coef,
+            "a": a_coef
+        },
+        "pixel_range": {
+            "min": 280,
+            "max": 1080
+        }
+    }, indent=2)

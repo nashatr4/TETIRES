@@ -17,7 +17,7 @@ import java.io.OutputStream
 import java.util.*
 
 /**
- * BluetoothHelper - Mengelola koneksi Bluetooth dengan HC-05/STM32
+ * BluetoothHelper - Mengelola koneksi Bluetooth dengan TETIRES/STM32
  *
  * Features:
  * - Auto-connect ke device tertentu (by name/address)
@@ -45,7 +45,7 @@ class BluetoothHelper(private val context: Context) {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     // Target device (bisa diset dari luar atau hardcode)
-    var targetDeviceName: String = "HC-05"  // Ganti sesuai nama Bluetooth module
+    var targetDeviceName: String = "TETIRES"  // Ganti sesuai nama Bluetooth module
     var targetDeviceAddress: String? = null  // Atau pakai MAC address langsung
 
     // UUID standar untuk SPP (Serial Port Profile)

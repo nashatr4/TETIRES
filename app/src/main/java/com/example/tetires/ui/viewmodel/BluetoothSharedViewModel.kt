@@ -47,7 +47,7 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
 
     // Python
     private val pythonInstance: Python = Python.getInstance()
-    private val processingModule by lazy { pythonInstance.getModule("tire_processing") }
+    private val processingModule by lazy { pythonInstance.getModule("tire_depth") }
 
     // STATE FLOWS
     private val _appMode = MutableStateFlow(AppMode.TERMINAL)

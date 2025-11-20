@@ -332,7 +332,7 @@ fun ConnectionStatusCard(
         ) {
             Column {
                 Text(
-                    text = if (isConnected) "🟢 Connected to HC-05" else "🔴 Disconnected",
+                    text = if (isConnected) "🟢 Connected to TETIRES" else "🔴 Disconnected",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )

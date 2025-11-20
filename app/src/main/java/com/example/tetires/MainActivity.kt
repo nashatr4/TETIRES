@@ -146,17 +146,20 @@ class MainActivity : ComponentActivity() {
     private fun testPythonModule() {
         try {
             val py = Python.getInstance()
-            val module = py.getModule("tire_processing")
+            // GANTI dari "tire_processing" ke "tire_depth"
+            val module = py.getModule("tire_depth")
 
-            // Dummy log untuk test
+            // Test dummy data
             val dummy = arrayListOf(
                 "--- SENSOR 1 ---",
-                "Pixel[   0]: 3277.44 mV",
-                "Pixel[  20]: 3255.68 mV",
-                "Pixel[  40]: 3264.54 mV",
+                "Pixel[ 280]: 2100.50 mV",
+                "Pixel[ 300]: 2150.30 mV",
+                "Pixel[ 320]: 2200.10 mV",
+                // ... dst sampai pixel 1080
             )
 
-            val result = module.callAttr("process_ccd_raw_lines", dummy).toString()
+            // Panggil fungsi utama
+            val result = module.callAttr("predict_file", dummy).toString()
 
             Log.i("PYTHON_TEST", "✅ Python works:\n$result")
 
