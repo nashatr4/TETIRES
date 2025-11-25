@@ -219,6 +219,10 @@ class MainViewModel(
     fun loadCheckDetail(idCek: Long) {
         viewModelScope.launch {
             _isLoading.value = true
+
+            _checkDetail.value = null
+            Log.d("DetailPengecekan", "State reset, loading detail for id=$idCek")
+
             try {
                 Log.d("DetailPengecekan", "Loading detail for id=$idCek")
                 val detail = repository.getCheckDetail(idCek)

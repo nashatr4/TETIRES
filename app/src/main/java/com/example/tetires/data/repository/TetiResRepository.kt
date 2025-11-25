@@ -49,9 +49,13 @@ class TetiresRepository(
     // ========== PENGECEKAN ==========
     suspend fun startOrGetOpenCheck(busId: Long): Pengecekan {
         val latest = pengecekanDao.getLatestPengecekanForBus(busId)
-        val shouldCreateNew = if (latest == null) true
-        else {
-            listOf(latest.statusDka, latest.statusDki, latest.statusBka, latest.statusBki).all { it != null }
+
+        val shouldCreateNew = if (latest == null) {
+            true
+        } else {
+            // Cek minimal ada 1 ban yang sudah diperiksa
+            listOf(latest.statusDka, latest.statusDki, latest.statusBka, latest.statusBki)
+                .any { it != null }
         }
 
         return if (shouldCreateNew) {
@@ -79,8 +83,9 @@ class TetiresRepository(
             }
             pengukuranAlurDao.insertAllPengukuran(pengukuranList)
 
-            newCheck.copy(idPengecekan = newId)
+            newCheck.copy(idPengecekan = newId )
         } else {
+            // Gunakan pengecekan yang masih kosong jika belum ada ban yang diperiksa
             latest ?: throw IllegalStateException("Gagal mendapatkan pengecekan terbaru")
         }
     }
@@ -225,15 +230,15 @@ class TetiresRepository(
             val detailList = detailBanDao.getDetailsByCheckId(idCek)
             Log.d(TAG, "📋 DetailBan count: ${detailList.size}")
 
-            if (detailList.isEmpty()) {
-                Log.e(TAG, "❌ Tidak ada DetailBan untuk idCek=$idCek")
-                return@withContext null
-            }
-
-            // Log semua detail ban
-            detailList.forEach { detail ->
-                Log.d(TAG, "  - DetailBan: posisi=${detail.posisiBan}, status=${detail.status}, idDetail=${detail.idDetail}")
-            }
+//            if (detailList.isEmpty()) {
+//                Log.e(TAG, "❌ Tidak ada DetailBan untuk idCek=$idCek")
+//                return@withContext null
+//            }
+//
+//            // Log semua detail ban
+//            detailList.forEach { detail ->
+//                Log.d(TAG, "  - DetailBan: posisi=${detail.posisiBan}, status=${detail.status}, idDetail=${detail.idDetail}")
+//            }
 
             // 4. Buat map posisi -> DetailBan
             val detailMap = detailList.associateBy { it.posisiBan }
@@ -254,14 +259,14 @@ class TetiresRepository(
 
             // 6. Helper function untuk convert PengukuranAlur -> AlurBan
             fun createAlurBan(pengukuran: PengukuranAlur?): AlurBan? {
-                return pengukuran?.let {
-                    AlurBan(
-                        alur1 = it.alur1,
-                        alur2 = it.alur2,
-                        alur3 = it.alur3,
-                        alur4 = it.alur4
-                    )
-                }
+                if (pengukuran == null) return null
+
+                return AlurBan(
+                        alur1 = pengukuran.alur1,
+                        alur2 = pengukuran.alur2,
+                        alur3 = pengukuran.alur3,
+                        alur4 = pengukuran.alur4
+                )
             }
 
             // 7. Build CheckDetail dengan mapping yang BENAR
@@ -274,10 +279,10 @@ class TetiresRepository(
                 platNomor = bus.platNomor,
 
                 // ✅ Status mapping (dari DetailBan atau fallback ke Pengecekan)
-                statusDka = detailMap["DKA"]?.status ?: check.statusDka,
-                statusDki = detailMap["DKI"]?.status ?: check.statusDki,
-                statusBka = detailMap["BKA"]?.status ?: check.statusBka,
-                statusBki = detailMap["BKI"]?.status ?: check.statusBki,
+                statusDka = detailMap["DKA"]?.status,
+                statusDki = detailMap["DKI"]?.status,
+                statusBka = detailMap["BKA"]?.status,
+                statusBki = detailMap["BKI"]?.status,
 
                 // ✅ Alur mapping
                 alurDka = createAlurBan(pengukuranMap["DKA"]),
