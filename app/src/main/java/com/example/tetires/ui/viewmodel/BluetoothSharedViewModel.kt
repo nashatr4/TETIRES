@@ -76,9 +76,14 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
     val dataCount: StateFlow<Int> = _dataCount.asStateFlow()
 
     // CONTEXT CEK BAN
-    private var currentPengecekanId: Long? = null
+    // ✅ UBAH: Pakai idCek yang konsisten
+    private var currentIdCek: Long? = null
     private var currentBusId: Long? = null
     private var currentPosisi: PosisiBan? = null
+
+    // ✅ TAMBAHKAN: Getter untuk akses dari luar
+    val savedIdCek: Long?
+        get() = currentIdCek
 
     private val _scanResults = MutableStateFlow<Map<PosisiBan, TireScanResult>>(emptyMap())
     val scanResults: StateFlow<Map<PosisiBan, TireScanResult>> = _scanResults.asStateFlow()
@@ -161,7 +166,8 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
     }
 
     // CEK BAN
-    fun enterCekBanMode(busId: Long, pengecekanId: Long) {
+    // ✅ UBAH: Parameter pakai idCek
+    fun enterCekBanMode(busId: Long, idCek: Long) {
         _appMode.value = AppMode.CEK_BAN
         currentBusId = busId
         _cekBanState.value = CekBanState.IDLE
@@ -169,29 +175,32 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
 
         addToTerminal("\n=== MODE CEK BAN ===")
         addToTerminal("Bus ID: $busId")
-        addToTerminal("Pengecekan ID: $pengecekanId")
+        addToTerminal("ID Cek: $idCek")
 
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val idPengecekanAktif: Long
+                val idCekAktif: Long
 
-                if (pengecekanId == 0L) {
-                    // 1. Selesaikan urusan database DULU
+                if (idCek == 0L) {
+                    // Buat pengecekan baru
                     val pengecekanBaru = repository.startOrGetOpenCheck(busId)
-                    idPengecekanAktif = pengecekanBaru.idPengecekan
-                    addToTerminal("Pengecekan baru dibuat. ID Aktif: $idPengecekanAktif")
+                    idCekAktif = pengecekanBaru.idPengecekan
+                    addToTerminal("Pengecekan baru dibuat. ID: $idCekAktif")
                 } else {
-                    addToTerminal("Mengedit Pengecekan ID: $pengecekanId")
-                    idPengecekanAktif = pengecekanId
+                    // Edit pengecekan existing
+                    addToTerminal("Mengedit Pengecekan ID: $idCek")
+                    idCekAktif = idCek
                 }
-                currentPengecekanId = idPengecekanAktif
 
-                // 2. SETELAH database selesai, BARU urus koneksi
+                // ✅ Simpan idCek aktif
+                currentIdCek = idCekAktif
+
+                // Koneksi device
                 if (!_isConnected.value) {
                     withContext(Dispatchers.Main) {
                         _statusMessage.value = "Menghubungkan device..."
                     }
-                    deviceManager.autoDetectDevices() // <-- INI SATU-SATUNYA PERINTAH KONEKSI
+                    deviceManager.autoDetectDevices()
                 } else {
                     withContext(Dispatchers.Main) {
                         _statusMessage.value = "Pilih posisi ban untuk scan"
@@ -205,13 +214,6 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
                 }
             }
         }
-
-//        if (!_isConnected.value) {
-//            _statusMessage.value = "Menghubungkan device..."
-//            viewModelScope.launch { deviceManager.autoDetectDevices() }
-//        } else {
-//            _statusMessage.value = "Pilih posisi ban untuk scan"
-//        }
     }
 
     fun selectPositionToScan(posisi: PosisiBan) {
@@ -257,9 +259,6 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
         processCurrentScan()
     }
 
-    /**
-     * ✅ FIXED: Proses data dengan parsing JSON yang benar
-     */
     fun processCurrentScan() {
         if (scanBuffer.isEmpty()) {
             _statusMessage.value = "Tidak ada data untuk diproses"
@@ -280,7 +279,6 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
                 val totalData = scanBuffer.size
                 Log.d(TAG, "Proses data: $totalData lines")
 
-                // Siapkan list Java untuk Chaquopy
                 val javaList = java.util.ArrayList(scanBuffer.toList())
                 val pyList = com.chaquo.python.PyObject.fromJava(javaList)
 
@@ -289,7 +287,6 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
                 addToTerminal("Python response received")
                 addToTerminal(resultJson.take(300) + if (resultJson.length > 300) "..." else "")
 
-                // ✅ Parse JSON dengan benar
                 val json = JSONObject(resultJson)
                 val success = json.optBoolean("success", false)
 
@@ -302,10 +299,8 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
                     return@launch
                 }
 
-                // ✅ Ambil object "result" (nested)
                 val data = json.getJSONObject("result")
 
-                // ✅ Parse 4 alur dengan default 0f jika tidak ada
                 val alur1 = data.optDouble("alur1", 0.0).toFloat()
                 val alur2 = data.optDouble("alur2", 0.0).toFloat()
                 val alur3 = data.optDouble("alur3", 0.0).toFloat()
@@ -317,7 +312,6 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
                 val isWorn = data.optBoolean("is_worn", false)
                 val pixelCount = data.optInt("pixel_count", totalData)
 
-                // ✅ Susun result
                 val result = TireScanResult(
                     posisi = currentPosisi!!,
                     adcMean = adcMean,
@@ -331,7 +325,6 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
                     alur4 = alur4
                 )
 
-                // Update state (simpan temporer)
                 val updated = _scanResults.value.toMutableMap()
                 updated[currentPosisi!!] = result
                 _scanResults.value = updated
@@ -372,16 +365,14 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
         _statusMessage.value = "Pilih posisi berikutnya atau simpan semua"
     }
 
-    /**
-     * ✅ FIXED: Simpan dengan 4 alur
-     */
+    // ✅ FIXED: Simpan dengan idCek yang benar
     fun saveAllResults() {
         val results = _scanResults.value
         if (results.isEmpty()) {
             _statusMessage.value = "Belum ada hasil untuk disimpan"
             return
         }
-        if (currentPengecekanId == null) {
+        if (currentIdCek == null) {
             _statusMessage.value = "Error: ID pengecekan tidak valid"
             return
         }
@@ -389,24 +380,24 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 addToTerminal("\n=== SAVING TO DATABASE ===")
+                addToTerminal("ID Cek: $currentIdCek")
+
                 val statusMap = mutableMapOf<PosisiBan, Boolean?>()
 
-                // Simpan per posisi
                 for ((posisi, result) in results) {
                     val statusBan: Boolean = result.isWorn
 
-                    // Cek existing DetailBan
-                    var detailBan = detailBanDao.getDetailByPosisi(currentPengecekanId!!, posisi.name)
+                    // ✅ Gunakan currentIdCek
+                    var detailBan = detailBanDao.getDetailByPosisi(currentIdCek!!, posisi.name)
                     if (detailBan == null) {
                         detailBan = DetailBan(
-                            pengecekanId = currentPengecekanId!!,
+                            pengecekanId = currentIdCek!!,
                             posisiBan = posisi.name,
                             status = statusBan
                         )
                         val detailId = detailBanDao.insertDetailBan(detailBan)
                         addToTerminal("Saved DetailBan for ${posisi.name} (ID: $detailId)")
 
-                        // ✅ Simpan 4 alur
                         val pengukuran = PengukuranAlur(
                             detailBanId = detailId,
                             alur1 = result.alur1,
@@ -417,12 +408,10 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
                         pengukuranAlurDao.insertPengukuran(pengukuran)
                         addToTerminal("Saved PengukuranAlur: ${result.groovesFormatted}")
                     } else {
-                        // Update existing detail
                         val updatedDetail = detailBan.copy(status = statusBan)
                         detailBanDao.updateDetailBan(updatedDetail)
                         addToTerminal("Updated DetailBan for ${posisi.name}")
 
-                        // ✅ Update 4 alur
                         val existingPeng = pengukuranAlurDao.getPengukuranByDetailBanId(detailBan.idDetail)
                         if (existingPeng == null) {
                             val pengukuran = PengukuranAlur(
@@ -448,8 +437,8 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
                     statusMap[posisi] = statusBan
                 }
 
-                // Update summary pengecekan
-                val pengecekan = pengecekanDao.getPengecekanById(currentPengecekanId!!)
+                // ✅ Update summary pengecekan
+                val pengecekan = pengecekanDao.getPengecekanById(currentIdCek!!)
                 if (pengecekan != null) {
                     val updatedPengecekan = pengecekan.copy(
                         statusDka = statusMap[PosisiBan.DKA],
@@ -463,7 +452,7 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
 
                 withContext(Dispatchers.Main) {
                     _cekBanState.value = CekBanState.SAVED
-                    _statusMessage.value = "Semua data berhasil disimpan!"
+                    _statusMessage.value = "Semua data berhasil disimpan! ID: $currentIdCek"
                     addToTerminal("=== DATABASE SAVE COMPLETE ===")
                 }
 
@@ -479,7 +468,7 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
     }
 
     fun resetCekBanContext() {
-        currentPengecekanId = null
+        currentIdCek = null
         currentBusId = null
         currentPosisi = null
         scanBuffer.clear()
@@ -488,7 +477,6 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
         _cekBanState.value = CekBanState.IDLE
     }
 
-    // UTIL
     private fun getCurrentTimestamp(): String {
         val sdf = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
         return sdf.format(java.util.Date())
@@ -508,9 +496,6 @@ class BluetoothSharedViewModel(application: Application) : AndroidViewModel(appl
     }
 }
 
-/**
- * ✅ Data class untuk hasil scan per ban
- */
 data class TireScanResult(
     val posisi: PosisiBan,
     val adcMean: Float,
@@ -523,11 +508,9 @@ data class TireScanResult(
     val alur3: Float,
     val alur4: Float,
 ) {
-    // ✅ Nilai minimum dari 4 alur (untuk menentukan status)
     val minGroove: Float
         get() = listOf(alur1, alur2, alur3, alur4).minOrNull() ?: 0f
 
-    // ✅ Nama alur yang paling kecil (Alur 1, Alur 2, dst)
     val minGrooveLabel: String
         get() {
             val alurMap = listOf(
@@ -540,18 +523,14 @@ data class TireScanResult(
             return minEntry?.first ?: "?"
         }
 
-    // ✅ Format untuk display di terminal (semua 4 alur)
     val groovesFormatted: String
         get() = "${"%.1f".format(alur1)} | ${"%.1f".format(alur2)} | ${"%.1f".format(alur3)} | ${"%.1f".format(alur4)}"
 
-    // ✅ Format singkat untuk display di ikon (hanya yang terkecil)
     val minGrooveFormatted: String
         get() = "${"%.1f".format(minGroove)} mm"
 
-    // ✅ Convert ke array untuk save ke repository
     fun toAlurArray(): FloatArray = floatArrayOf(alur1, alur2, alur3, alur4)
 
-    // ✅ Get status text untuk display
     val statusText: String
         get() = if (isWorn) "AUS (< 1.6mm)" else "AMAN (≥ 1.6mm)"
 }

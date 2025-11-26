@@ -184,7 +184,7 @@ class TetiresRepository(
             .map { filteredList ->
                 filteredList.map { item ->
                     PengecekanRingkas(
-                        idCek = item.idPengecekan,
+                        idCek = item.idPengecekan,  // ✅ MAPPING: idCek = idPengecekan dari DB
                         tanggalCek = item.tanggalMs,
                         tanggalReadable = DateUtils.formatDate(item.tanggalMs),
                         waktuReadable = DateUtils.formatTime(item.waktuMs),
@@ -203,6 +203,7 @@ class TetiresRepository(
             }
     }
 
+
     /**
      * ✅ FIXED: getCheckDetail dengan logging detail dan error handling lebih baik
      */
@@ -210,7 +211,7 @@ class TetiresRepository(
         try {
             Log.d(TAG, "========== START getCheckDetail for idCek=$idCek ==========")
 
-            // 1. Ambil Pengecekan
+            // 1. Ambil Pengecekan dari DB (parameter idCek = idPengecekan di DB)
             val check = pengecekanDao.getPengecekanById(idCek)
             if (check == null) {
                 Log.e(TAG, "❌ Pengecekan tidak ditemukan untuk idCek=$idCek")
@@ -229,16 +230,6 @@ class TetiresRepository(
             // 3. Ambil semua DetailBan untuk pengecekan ini
             val detailList = detailBanDao.getDetailsByCheckId(idCek)
             Log.d(TAG, "📋 DetailBan count: ${detailList.size}")
-
-//            if (detailList.isEmpty()) {
-//                Log.e(TAG, "❌ Tidak ada DetailBan untuk idCek=$idCek")
-//                return@withContext null
-//            }
-//
-//            // Log semua detail ban
-//            detailList.forEach { detail ->
-//                Log.d(TAG, "  - DetailBan: posisi=${detail.posisiBan}, status=${detail.status}, idDetail=${detail.idDetail}")
-//            }
 
             // 4. Buat map posisi -> DetailBan
             val detailMap = detailList.associateBy { it.posisiBan }
@@ -262,29 +253,29 @@ class TetiresRepository(
                 if (pengukuran == null) return null
 
                 return AlurBan(
-                        alur1 = pengukuran.alur1,
-                        alur2 = pengukuran.alur2,
-                        alur3 = pengukuran.alur3,
-                        alur4 = pengukuran.alur4
+                    alur1 = pengukuran.alur1,
+                    alur2 = pengukuran.alur2,
+                    alur3 = pengukuran.alur3,
+                    alur4 = pengukuran.alur4
                 )
             }
 
             // 7. Build CheckDetail dengan mapping yang BENAR
             val checkDetail = CheckDetail(
-                idCek = check.idPengecekan,
+                idCek = check.idPengecekan,  // ✅ MAPPING: idCek = idPengecekan dari DB
                 tanggalCek = check.tanggalMs,
                 tanggalReadable = DateUtils.formatDate(check.tanggalMs),
                 waktuReadable = DateUtils.formatTime(check.waktuMs),
                 namaBus = bus.namaBus,
                 platNomor = bus.platNomor,
 
-                // ✅ Status mapping (dari DetailBan atau fallback ke Pengecekan)
+                // Status mapping (dari DetailBan)
                 statusDka = detailMap["DKA"]?.status,
                 statusDki = detailMap["DKI"]?.status,
                 statusBka = detailMap["BKA"]?.status,
                 statusBki = detailMap["BKI"]?.status,
 
-                // ✅ Alur mapping
+                // Alur mapping
                 alurDka = createAlurBan(pengukuranMap["DKA"]),
                 alurDki = createAlurBan(pengukuranMap["DKI"]),
                 alurBka = createAlurBan(pengukuranMap["BKA"]),
@@ -359,7 +350,7 @@ class TetiresRepository(
                 statusMatch || namaMatch || platMatch || dateMatch
             }.map { item ->
                 LogItem(
-                    idCek = item.idPengecekan,
+                    idCek = item.idPengecekan,  // ✅ MAPPING: idCek = idPengecekan
                     tanggalCek = item.tanggalMs,
                     tanggalReadable = DateUtils.formatDate(item.tanggalMs),
                     waktuReadable = DateUtils.formatTime(item.tanggalMs),

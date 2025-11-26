@@ -108,6 +108,7 @@ class MainActivity : ComponentActivity() {
                         }
 
                         // 🔍 Detail Pengecekan
+                        // ✅ FIXED: Pakai idCek sebagai parameter
                         composable(
                             route = "detailPengecekan/{idCek}",
                             arguments = listOf(navArgument("idCek") { type = NavType.LongType })
@@ -117,6 +118,7 @@ class MainActivity : ComponentActivity() {
                         }
 
                         // ⚙️ Cek Ban (Guided Mode)
+                        // ✅ FIXED: Pakai pengecekanId (karena dari luar, belum tentu ada)
                         composable(
                             route = "cekBan/{busId}/{pengecekanId}",
                             arguments = listOf(
@@ -146,7 +148,6 @@ class MainActivity : ComponentActivity() {
     private fun testPythonModule() {
         try {
             val py = Python.getInstance()
-            // GANTI dari "tire_processing" ke "tire_depth"
             val module = py.getModule("tire_depth")
 
             // Test dummy data
@@ -155,7 +156,6 @@ class MainActivity : ComponentActivity() {
                 "Pixel[ 280]: 2100.50 mV",
                 "Pixel[ 300]: 2150.30 mV",
                 "Pixel[ 320]: 2200.10 mV",
-                // ... dst sampai pixel 1080
             )
 
             // Panggil fungsi utama
@@ -178,7 +178,6 @@ class MainActivity : ComponentActivity() {
                 Manifest.permission.BLUETOOTH_SCAN
             )
 
-            // Tambahkan permission advertise (Android 13+)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 permissions.add(Manifest.permission.BLUETOOTH_ADVERTISE)
             }
@@ -203,7 +202,7 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * 🧾 Handle permission results
+     * 🧾 Handle permission results (Composable version)
      */
     @Composable
     fun RequestBluetoothPermissions() {
@@ -228,7 +227,6 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        // Jalankan request izin saat komponen pertama kali muncul
         LaunchedEffect(Unit) {
             launcher.launch(permissions.toTypedArray())
         }

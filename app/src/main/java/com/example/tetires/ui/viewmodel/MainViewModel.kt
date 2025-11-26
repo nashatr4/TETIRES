@@ -82,6 +82,7 @@ class MainViewModel(
         }
     }
 
+    // ✅ FIXED: Parameter pakai idCek
     fun completeCheck(idCek: Long) {
         viewModelScope.launch {
             try {
@@ -140,6 +141,7 @@ class MainViewModel(
         }
     }
 
+    // ✅ FIXED: Parameter pakai idCek
     fun deletePengecekan(idCek: Long, busId: Long) {
         viewModelScope.launch {
             val result = repository.deletePengecekanById(idCek)
@@ -168,6 +170,7 @@ class MainViewModel(
         }
     }
 
+    // ✅ FIXED: Parameter pakai idCek
     fun updateCheckPartial(idCek: Long, posisi: PosisiBan, alurValues: FloatArray) {
         if (alurValues.size != 4) {
             _errorMessage.value = "Harus 4 nilai alur"
@@ -216,15 +219,16 @@ class MainViewModel(
         }
     }
 
+    // ✅ FIXED: Parameter pakai idCek
     fun loadCheckDetail(idCek: Long) {
         viewModelScope.launch {
             _isLoading.value = true
 
             _checkDetail.value = null
-            Log.d("DetailPengecekan", "State reset, loading detail for id=$idCek")
+            Log.d("DetailPengecekan", "State reset, loading detail for idCek=$idCek")
 
             try {
-                Log.d("DetailPengecekan", "Loading detail for id=$idCek")
+                Log.d("DetailPengecekan", "Loading detail for idCek=$idCek")
                 val detail = repository.getCheckDetail(idCek)
 
                 if (detail != null) {
@@ -232,7 +236,7 @@ class MainViewModel(
                     Log.d("DetailPengecekan", "Detail loaded successfully: $detail")
                 } else {
                     _errorMessage.value = "Data detail tidak ditemukan."
-                    Log.e("DetailPengecekan", "No detail found for id=$idCek")
+                    Log.e("DetailPengecekan", "No detail found for idCek=$idCek")
                 }
 
             } catch (e: Exception) {
@@ -244,7 +248,6 @@ class MainViewModel(
         }
     }
 
-
     fun clearError() {
         _errorMessage.value = null
         _statusMessage.value = null
@@ -252,16 +255,11 @@ class MainViewModel(
 
     // ===== DOWNLOAD FUNCTIONS =====
 
-    /**
-     * Download riwayat pengecekan sebagai CSV file dan langsung buka
-     * Method 1: Save ke Downloads + Auto Open
-     */
     fun downloadHistory(context: Context, busId: Long) {
         viewModelScope.launch {
             try {
                 _isLoading.value = true
 
-                // ✅ Ambil data riwayat pengecekan
                 val logs = repository.getLast10Checks(busId).first()
 
                 if (logs.isEmpty()) {
@@ -271,14 +269,11 @@ class MainViewModel(
                     return@launch
                 }
 
-                // ✅ Ambil data pengukuran alur
                 val pengecekanIds = logs.map { it.idCek }
                 val pengukuranMap = repository.getPengukuranMapByPengecekanIdsForExport(pengecekanIds)
 
-                // ✅ Ambil nama bus
                 val bus = repository.getBusById(busId)
 
-                // ✅ Download
                 DownloadHelper.downloadHistoryAsCSV(
                     context = context,
                     logs = logs,
@@ -301,10 +296,6 @@ class MainViewModel(
         }
     }
 
-    /**
-     * Alternative Method: Share CSV (Lebih reliable karena tidak perlu storage permission)
-     * User bisa pilih: Save ke Drive, Buka dengan Excel, Share via WhatsApp, dll
-     */
     fun downloadAndShareHistory(context: Context, busId: Long) {
         viewModelScope.launch {
             try {
@@ -346,10 +337,6 @@ class MainViewModel(
         }
     }
 
-    /**
-     * Download riwayat detail (dengan format lengkap)
-     * Include semua informasi status ban per posisi
-     */
     fun downloadDetailedHistory(context: Context, busId: Long) {
         viewModelScope.launch {
             try {
@@ -391,11 +378,6 @@ class MainViewModel(
         }
     }
 
-    // ===== DOWNLOAD FUNCTIONS (untuk RiwayatScreen) =====
-
-    /**
-     * ✅ Export history dengan data pengukuran lengkap
-     */
     fun exportHistory(context: Context, logs: List<PengecekanRingkas>, busName: String?) {
         viewModelScope.launch {
             try {
@@ -408,13 +390,11 @@ class MainViewModel(
                     return@launch
                 }
 
-                // ✅ Ambil data pengukuran untuk semua pengecekan
                 val pengecekanIds = logs.map { it.idCek }
                 val pengukuranMap = repository.getPengukuranMapByPengecekanIdsForExport(pengecekanIds)
 
                 Log.d("MainViewModel", "Exporting ${logs.size} logs with ${pengukuranMap.size} pengukuran entries")
 
-                // ✅ Download dengan data lengkap
                 DownloadHelper.downloadHistoryAsCSV(
                     context = context,
                     logs = logs,
@@ -437,9 +417,6 @@ class MainViewModel(
         }
     }
 
-    /**
-     * ✅ Export dan share history dengan data pengukuran lengkap
-     */
     fun exportAndShareHistory(context: Context, logs: List<PengecekanRingkas>, busName: String?) {
         viewModelScope.launch {
             try {
@@ -452,13 +429,11 @@ class MainViewModel(
                     return@launch
                 }
 
-                // ✅ Ambil data pengukuran untuk semua pengecekan
                 val pengecekanIds = logs.map { it.idCek }
                 val pengukuranMap = repository.getPengukuranMapByPengecekanIdsForExport(pengecekanIds)
 
                 Log.d("MainViewModel", "Sharing ${logs.size} logs with ${pengukuranMap.size} pengukuran entries")
 
-                // ✅ Download + share dengan data lengkap
                 DownloadHelper.downloadAndShareCSV(
                     context = context,
                     logs = logs,
@@ -480,8 +455,6 @@ class MainViewModel(
             }
         }
     }
-
-    // ===== TEST FUNCTION =====
 
     fun testUpdateFlow() {
         viewModelScope.launch {

@@ -25,13 +25,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.constraintlayout.compose.ConstraintLayout  // ← SATU-SATUNYA import ConstraintLayout
+import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.tetires.R
 import com.example.tetires.data.model.PosisiBan
 import com.example.tetires.ui.viewmodel.*
 import com.example.tetires.util.DeviceType
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,8 +63,26 @@ fun CekBanScreen(
         }
     }
 
+    // ✅ Enter mode saat pertama kali
     LaunchedEffect(Unit) {
         bluetoothVM.enterCekBanMode(busId, pengecekanId)
+    }
+
+    // ✅ FIXED: Navigasi otomatis setelah save berhasil
+    LaunchedEffect(cekBanState) {
+        if (cekBanState == CekBanState.SAVED) {
+            // Ambil ID yang baru disimpan dari ViewModel
+            val savedIdCek = bluetoothVM.savedIdCek ?: pengecekanId
+
+            // Delay sebentar untuk animasi
+            delay(1000)
+
+            // ✅ Navigasi dengan idCek yang benar
+            navController.navigate("detailPengecekan/$savedIdCek") {
+                popUpTo("beranda") { inclusive = false }
+                launchSingleTop = true
+            }
+        }
     }
 
     Scaffold(
@@ -119,13 +138,12 @@ fun CekBanScreen(
                 onStartScan = { bluetoothVM.startScan() },
                 onStop = { bluetoothVM.stopScan() },
                 onSaveAll = { bluetoothVM.saveAllResults() },
-                onRestart = { bluetoothVM.resetCekBanContext() },
-                onComplete = {
-                    navController.navigate("detailPengecekan/$pengecekanId") {
-                        popUpTo("beranda") { inclusive = false }
-                        launchSingleTop = true
-                    }
-                }
+                onRestart = {
+                    bluetoothVM.resetCekBanContext()
+                    navController.navigateUp()
+                },
+                // ✅ FIXED: Tidak perlu onComplete karena sudah auto-navigate
+                onComplete = {} // Tidak dipakai lagi, tapi tetap ada untuk kompatibilitas
             )
         }
     }
@@ -198,13 +216,12 @@ fun StateIndicatorCard(
                     text = when (state) {
                         CekBanState.SCANNING -> "$dataCount data diterima"
                         CekBanState.PROCESSING -> "Python sedang mengolah..."
-                        CekBanState.SAVED -> "Semua disimpan di database"
+                        CekBanState.SAVED -> "Mengarahkan ke detail..."
                         else -> if (!isConnected) "Bluetooth belum terhubung" else "Sistem siap"
                     },
                     fontSize = 12.sp,
                     color = Color.Gray
                 )
-
             }
 
             when (state) {
@@ -217,6 +234,12 @@ fun StateIndicatorCard(
 
                 CekBanState.RESULT_READY ->
                     Icon(Icons.Default.CheckCircle, contentDescription = "OK", tint = Color(0xFF10B981), modifier = Modifier.size(32.dp))
+
+                CekBanState.SAVED ->
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(32.dp),
+                        color = Color(0xFF10B981)
+                    )
 
                 CekBanState.ERROR ->
                     Icon(Icons.Default.Cancel, contentDescription = "Error", tint = Color(0xFFEF4444), modifier = Modifier.size(32.dp))
@@ -260,7 +283,6 @@ fun BusLayoutWithResults(
                 }
         )
 
-        // Depan Kiri (DKI)
         ResultIcon(
             modifier = Modifier.constrainAs(iconDKI) {
                 top.linkTo(topGuide, margin = -10.dp)
@@ -272,7 +294,6 @@ fun BusLayoutWithResults(
             onClick = { onSelectPosition(PosisiBan.DKI) }
         )
 
-        // Depan Kanan (DKA)
         ResultIcon(
             modifier = Modifier.constrainAs(iconDKA) {
                 top.linkTo(topGuide, margin = -10.dp)
@@ -284,7 +305,6 @@ fun BusLayoutWithResults(
             onClick = { onSelectPosition(PosisiBan.DKA) }
         )
 
-        // Belakang Kiri (BKI)
         ResultIcon(
             modifier = Modifier.constrainAs(iconBKI) {
                 bottom.linkTo(bottomGuide, margin = -10.dp)
@@ -296,7 +316,6 @@ fun BusLayoutWithResults(
             onClick = { onSelectPosition(PosisiBan.BKI) }
         )
 
-        // Belakang Kanan (BKA)
         ResultIcon(
             modifier = Modifier.constrainAs(iconBKA) {
                 bottom.linkTo(bottomGuide, margin = -10.dp)
@@ -309,7 +328,6 @@ fun BusLayoutWithResults(
         )
     }
 }
-
 
 @Composable
 fun ResultIcon(
@@ -327,10 +345,8 @@ fun ResultIcon(
         val (icon, color) = when {
             result != null -> {
                 if (result.minGroove < 1.6f) {
-                    // ❌ Worn tire → red cross
                     Icons.Default.Cancel to Color(0xFFEF4444)
                 } else {
-                    // ✅ Safe tire → green check
                     Icons.Default.CheckCircle to Color(0xFF10B981)
                 }
             }
@@ -354,7 +370,6 @@ fun ResultIcon(
             )
         }
 
-        // Show groove depth text with same color logic
         result?.let {
             Text(
                 text = "${"%.3f".format(it.minGroove)} mm",
@@ -365,7 +380,6 @@ fun ResultIcon(
         }
     }
 }
-
 
 @Composable
 fun ActionButtons(
@@ -416,10 +430,6 @@ fun ActionButtons(
             }
 
             CekBanState.RESULT_READY -> {
-                // ✅ Hasil scan ready, user bisa:
-                // 1. Pilih posisi lain untuk scan lagi
-                // 2. Atau langsung simpan semua
-
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         "Hasil tersimpan sementara",
@@ -447,7 +457,7 @@ fun ActionButtons(
             }
 
             CekBanState.SAVED -> {
-                // ✅ Data sudah di database
+                // ✅ Auto-navigasi sudah terjadi via LaunchedEffect
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(
                         Icons.Default.CheckCircle,
@@ -462,30 +472,15 @@ fun ActionButtons(
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF10B981)
                     )
-                }
-
-                Spacer(Modifier.height(16.dp))
-
-                Button(
-                    onClick = onComplete,
-                    modifier = Modifier.size(250.dp, 56.dp),
-                    shape = RoundedCornerShape(50.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3949A3))
-                ) {
-                    Text("Lihat Detail", color = Color.White, fontWeight = FontWeight.Bold)
-                }
-
-                OutlinedButton(
-                    onClick = onRestart,
-                    modifier = Modifier.size(250.dp, 56.dp),
-                    shape = RoundedCornerShape(50.dp)
-                ) {
-                    Text("Scan Bus Lain")
+                    Text(
+                        "Mengarahkan ke detail...",
+                        fontSize = 12.sp,
+                        color = Color.Gray
+                    )
                 }
             }
 
             CekBanState.ERROR -> {
-                // ✅ Error occurred
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(
                         Icons.Default.Cancel,
